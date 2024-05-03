@@ -1,2 +1,9 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+namespace Mattodev.Lifetime.CmdLineTool;
+
+class Program {
+	public static void Main(string[] args) {
+		string[] source = File.ReadAllLines("snippet.lt");
+		LTRuntimeContainer rtContainer = new();
+		LTInterpreter.Exec(source, ref rtContainer);
+	}
+}

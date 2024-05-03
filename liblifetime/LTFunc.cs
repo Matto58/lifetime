@@ -31,7 +31,7 @@ public class LTInternalFunc(
 
 	public LTVar? Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
 		var (ret, container) = execedFunc(runtimeContainer, funcParams);
-		runtimeContainer = container;
+		runtimeContainer.Output = container.Output;
 		return ret;
 	}
 }
