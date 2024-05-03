@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Mattodev.Lifetime;
 
 public enum LTVarAccess { Public, Private }
@@ -27,5 +29,3 @@ public class LTVar(string name, string varNamespace, string varClass, string var
 	public static LTVar SimpleMut(string type, string name, string? value)
 		=> new(name, "", "", "", value, false, LTVarAccess.Public);
 }
-
-public class LTVarInx<T> : Dictionary<string, Dictionary<string, Dictionary<string, T>>> {}
