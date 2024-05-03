@@ -1,0 +1,46 @@
+# this is a comment!
+#>
+this is a block comment!
+more lines
+even more lines
+<#
+
+namespace lifetime_snippet # namespace definition, there can only be one per file, applies globally, must be unique to everything else
+
+# class definition: class <class name> <pub/priv for public/private class; public: callable by everyone, private: callable by this namespace>
+class program pub
+	# function definition: fn <return type> <function name> <arguments> <[OPTIONAL] pub/priv for public/private function, takes class access by default>
+	# int32 namespace->program::main array>str is always the entry point
+	# type_with_type_parameter>other_type is like c#'s TypeWithTypeParameter<OtherType>
+	# parameters are formatted like type1:arg1 type2:arg2 etc.
+	fn int32 main array>str:args
+		# builtin function calling: !<namespace>-><class>::<function> <arguments>
+		!sys->dev::bindns "sys" # allows the classes of the specified namespace to be used everywhere
+		!io::print_line "hello world!" # prints "hello world!" with a new line
+
+		let str string1 !hello # call without args
+		let str string2 !hello "john doe" # now with args
+
+		!io::print_line $string1
+		!io::print_line $string2
+
+		!dev::unbindns "sys" # does the reverse of !sys->dev::bindns, e.g. disallows the classes of the specified namespace to be used everywhere
+		ret 0 # return variable
+	end
+
+	fn str hello str:name
+		# variable definition: let <type> <variable name> <value>
+		let str my_string "hello "
+
+		# if declaration: if <boolean expression> then
+		if !tools::is_null name then # all variables can be null
+			!io::print "what's your name? " # prints "what's your name? " WITHOUT a new line
+			# variable redefinition: $<variable name> <- <new value>
+			$name <- !io::read_line
+		end
+		# $variable refers to the variable
+		$my_string += $name
+
+		ret $my_string # now return our string
+	end
+end

@@ -1,0 +1,29 @@
+namespace lifetime_snippet
+
+class program pub
+	fn int32 main array>str:args
+		!sys->dev::bindns "sys"
+		!io::print_line "hello world!"
+
+		let str string1 !hello
+		let str string2 !hello "john doe"
+
+		!io::print_line $string1
+		!io::print_line $string2
+
+		!dev::unbindns "sys"
+		ret 0
+	end
+
+	fn str hello str:name
+		let str my_string "hello "
+
+		if !tools::is_null name then
+			!io::print "what's your name? "
+			$name <- !io::read_line
+		end
+		$my_string += $name
+
+		ret $my_string
+	end
+end

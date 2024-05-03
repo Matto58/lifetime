@@ -1,0 +1,11 @@
+Heya! This is Lifetime, an interpreted language that I'm working on. I included
+a snippet of what the language should look like in the file snippet.lt; if you
+do any changes, make sure this file is runnable by the interpreter. Lifetime
+files end with the .lt extension.
+
+One might be wondering where the name came from; the answer is extremely
+simple: have you heard of the "niche" band Lemon Demon? Neil Cicierega? Does
+that name sound familiar to you? If so, excellent; the name comes from the
+first track on Spirit Phone, Lifetime Achievement Award, I wanted to name this
+language H or H# but the extensions .h and .hs are taken by C headers and
+Haskell respectively.
