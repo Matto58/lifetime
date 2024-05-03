@@ -2,6 +2,7 @@ namespace Mattodev.Lifetime;
 
 public class LTRuntimeContainer {
 	public string Output;
+	public Func<string, string> InputHandler;
 	public List<LTVar> Vars;
 	public List<LTDefinedFunc> DFuncs;
 	public List<LTInternalFunc> IFuncs;
@@ -11,5 +12,6 @@ public class LTRuntimeContainer {
 	public LTRuntimeContainer() {
 		Output = "";
 		Vars = []; DFuncs = []; IFuncs = [];
+		InputHandler = _ => "";
 	}
 }

@@ -17,6 +17,8 @@ public class LTInterpreter {
 				c.Output += a[0].Value + "\n";
 				return (null, null, c);
 			}),
+			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], (c, a) =>
+				(LTVar.SimpleMut("str", "_answer", c.InputHandler(a[0].Value)), null, c)),
 			// class: !sys->tools
 			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], (c, a) => {
 				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false"), null, c);

@@ -34,9 +34,8 @@ class program pub
 
 		# if declaration: if <boolean expression> then
 		if !tools::is_null name then # all variables can be null
-			!io::print "what's your name? " # prints "what's your name? " WITHOUT a new line
 			# variable redefinition: $<variable name> <- <new value>
-			$name <- !io::read_line
+			$name <- !io::read_line "what's your name? "
 		end
 		# $variable refers to the variable
 		$my_string += $name

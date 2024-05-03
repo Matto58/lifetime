@@ -19,8 +19,7 @@ class program pub
 		let str my_string "hello "
 
 		if !tools::is_null name then
-			!io::print "what's your name? "
-			$name <- !io::read_line
+			$name <- !io::read_line "what's your name? "
 		end
 		$my_string += $name
 
