@@ -4,8 +4,6 @@ namespace Mattodev.Lifetime;
 
 public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc }
 public class LTInterpreter {
-	private static LTInterpreterState state = LTInterpreterState.Idle;
-	public static LTInterpreterState State => state;
 	public static readonly LTRuntimeContainer DefaultContainer = new() {
 		IFuncs = [
 			// class: !sys->io
@@ -38,8 +36,8 @@ public class LTInterpreter {
 		]
 	};
 
-	public static void Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
-		state = LTInterpreterState.Executing;
+	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
+		container.interpreterState = LTInterpreterState.Executing;
 		var s = MinifyCode(source).Select((l, i) => (l, i));
 		foreach ((string line, int i) in s) {
 			string[] ln = line.Split(' ');
@@ -50,9 +48,12 @@ public class LTInterpreter {
 				case '!':
 					var e = FindAndExecFunc(ln[0][1..], ln.Length > 1 ? ln[1..] : [], fileName, line, i+1, ref container);
 					if (e != null) {
-						LogError(e, ref container);
-						state = LTInterpreterState.ExitFail;
-						return;
+						// LogError shouldnt run if a function that ran within this one exited with an error and already logged it
+						if (!container.nestedFuncExitedFine)
+							LogError(e, ref container);
+						container.interpreterState = LTInterpreterState.ExitFail;
+						container.nestedFuncExitedFine = false;
+						return false;
 					}
 					break;
 				default:
@@ -65,7 +66,8 @@ public class LTInterpreter {
 				*/
 			}
 		}
-		if (!nested) state = LTInterpreterState.ExitSuccess;
+		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
+		return true;
 	}
 
 	public static string[] MinifyCode(string[] lines) {
@@ -101,13 +103,17 @@ public class LTInterpreter {
 	}
 
 	public static void LogError(LTError error, ref LTRuntimeContainer container) {
-		container.Output +=
+		string msg =
 			$"ERROR!! {error.Message}\n" +
 			$"Occured in: {error.File}\n" +
 			$"{error.Line.Number}:\t{error.Line.Content}\n";
+		container.Output += msg;
+		container.OutputHandler(msg);
 	}
 	public static void LogWarning(string msg, ref LTRuntimeContainer container) {
-		container.Output += $"Warning: {msg}";
+		string msg2 = $"Warning: {msg}";
+		container.Output += msg2;
+		container.OutputHandler(msg2);
 	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
@@ -125,23 +131,34 @@ public class LTInterpreter {
 			funcClass = s2[0];
 			funcName = s1[1];
 			foreach (string ns in container.bindedNamespaces) {
-				Console.WriteLine($"Looking for !{funcClass}::{funcName} in binded namespace {ns}...");
+				//Console.WriteLine($"Looking for !{funcClass}::{funcName} in binded namespace {ns}...");
 				func = GetFunc(ns, funcClass, funcName, indexedDFuncs, indexedIFuncs);
-				if (func != null) return ExecFunc(func, args, file, line, lineNum, ref container);
+				if (func != null) {
+					var e = ExecFunc(func, args, file, line, lineNum, ref container);
+					container.nestedFuncExitedFine = e == null;
+					return e;
+				}
 			}
+			container.nestedFuncExitedFine = func == null;
 			if (func == null) return new($"Function not found: {id}", file, line, lineNum);
 		}
 
 		string funcNamespace = s2[0];
 		funcClass = s2[1];
 		funcName = s1[1];
-		Console.WriteLine($"Looking for !{funcNamespace}->{funcClass}::{funcName}...");
+		//Console.WriteLine($"Looking for !{funcNamespace}->{funcClass}::{funcName}...");
 		func = GetFunc(funcNamespace, funcClass, funcName, indexedDFuncs, indexedIFuncs);
-		if (func != null) return ExecFunc(func, args, file, line, lineNum, ref container);
+		if (func != null) {
+			var e = ExecFunc(func, args, file, line, lineNum, ref container);
+			container.nestedFuncExitedFine = e == null;
+			return e;
+		}
+		container.nestedFuncExitedFine = false;
 		return new($"Function not found: {id}", file, line, lineNum);
 	}
 	public static LTError? ExecFunc(ILifetimeFunc func, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		var args2 = ParseFuncArgs(args, ref container);
+		//Console.WriteLine($"ExecFunc: function !{func.Namespace}->{func.Class}::{func.Name} supports {func.AcceptsArgs} args");
 		if (func.AcceptsArgs != args2.Count) return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 		var (v, e) = func.Call(ref container, [.. args2]);
 		container.LastReturnedValue = v;
@@ -151,6 +168,7 @@ public class LTInterpreter {
 		List<LTVar> parsed = [];
 		bool doingString = false;
 		foreach (string arg in args) {
+			//Console.WriteLine("ParseFuncArgs: parsing " + arg);
 			if (arg[0] == '"') {
 				doingString = true;
 				string s = "";
@@ -177,14 +195,15 @@ public class LTInterpreter {
 				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg));
 			}
 		}
+		//Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
 		return parsed;
 	}
 
 	public static ILifetimeFunc? GetFunc(string funcNs, string funcClass, string funcName, Dictionary<string, LTDefinedFunc> indexedDFuncs, Dictionary<string, LTInternalFunc> indexedIFuncs) {
-		Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
+		//Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
 		if (indexedDFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var dFunc)) return dFunc;
 
-		Console.WriteLine("Not found in dfuncs, trying ifuncs");
+		//Console.WriteLine("Not found in dfuncs, trying ifuncs");
 		if (indexedIFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var iFunc)) return iFunc;
 
 		return null;

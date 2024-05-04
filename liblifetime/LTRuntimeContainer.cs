@@ -8,7 +8,9 @@ public class LTRuntimeContainer {
 	public List<LTDefinedFunc> DFuncs;
 	public List<LTInternalFunc> IFuncs;
 	public LTVar? LastReturnedValue;
-	internal List<string> bindedNamespaces = []; 
+	internal List<string> bindedNamespaces = [];
+	internal LTInterpreterState interpreterState = LTInterpreterState.Idle;
+	internal bool nestedFuncExitedFine = true;
 
 	public LTRuntimeContainer() {
 		Output = "";

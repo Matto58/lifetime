@@ -41,11 +41,12 @@ public class LTDefinedFunc : LTInternalFunc {
 
 	public LTDefinedFunc(
 		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs,
-		string[] functionSrcCode
+		string[] functionSrcCode, string fileName
 	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs) {
 		SourceCode = functionSrcCode;
 		execedFunc = (container, args) => {
-			return (null, null, container); // todo: temporary code until i implement the interpreter
+			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container, true);
+			return (container.LastReturnedValue, new("", "", "", 0), container); // todo: temporary code until i implement the interpreter
 		};
 	}
 }

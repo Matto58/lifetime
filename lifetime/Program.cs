@@ -1,10 +1,14 @@
 namespace Mattodev.Lifetime.CmdLineTool;
 
 class Program {
-	public static void Main(string[] args) {
+	public static int Main(string[] args) {
 		string[] source = File.ReadAllLines("test.lt");
 		LTRuntimeContainer rtContainer = LTInterpreter.DefaultContainer;
-		LTInterpreter.Exec(source, "test.lt", ref rtContainer);
-		Console.Write(rtContainer.Output);
+		rtContainer.InputHandler += q => {
+			Console.Write(q);
+			return Console.ReadLine() ?? "";
+		};
+		rtContainer.OutputHandler += Console.Write;
+		return LTInterpreter.Exec(source, "test.lt", ref rtContainer) ? 0 : 1;
 	}
 }
