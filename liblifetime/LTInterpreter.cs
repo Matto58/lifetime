@@ -11,10 +11,12 @@ public class LTInterpreter {
 			// class: !sys->io
 			new("print", "sys", "io", "obj", LTVarAccess.Public, [("str", "string")], (c, a) => {
 				c.Output += a[0].Value;
+				c.OutputHandler(a[0].Value);
 				return (null, null, c);
 			}),
 			new("print_line", "sys", "io", "obj", LTVarAccess.Public, [("str", "string")], (c, a) => {
 				c.Output += a[0].Value + "\n";
+				c.OutputHandler(a[0].Value + "\n");
 				return (null, null, c);
 			}),
 			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], (c, a) =>
