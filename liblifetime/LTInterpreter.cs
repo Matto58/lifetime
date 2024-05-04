@@ -60,10 +60,31 @@ public class LTInterpreter {
 					break;
 			}
 			switch (ln[0]) {
-				/*
-				case "":
+				// variable definition: let <type> <variable name> <value>
+				case "let":
+					if (ln.Length < 4) {
+						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
+						return false;
+					}
+					// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
+					if (container.Vars.Select(v => v.Name).Contains(ln[2])) {
+						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
+						return false;
+					}
+					var (val, e) = ParseFuncArgs(ln[3..], fileName, line, i+1, ref container);
+					if (e != null) {
+						LogError(e, ref container);
+						return false;
+					}
+					if (val.Count != 1) {
+						LogError(new($"", fileName, line, i+1), ref container);
+						return false;
+					}
+					val[0].Constant = false;
+					val[0].Name = ln[2];
+					val[0].Type = ln[1];
+					container.Vars.Add(val[0]);
 					break;
-				*/
 			}
 		}
 		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
@@ -111,7 +132,7 @@ public class LTInterpreter {
 		container.OutputHandler(msg);
 	}
 	public static void LogWarning(string msg, ref LTRuntimeContainer container) {
-		string msg2 = $"Warning: {msg}";
+		string msg2 = $"Warning: {msg}\n";
 		container.Output += msg2;
 		container.OutputHandler(msg2);
 	}
@@ -157,14 +178,17 @@ public class LTInterpreter {
 		return new($"Function not found: {id}", file, line, lineNum);
 	}
 	public static LTError? ExecFunc(ILifetimeFunc func, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
-		var args2 = ParseFuncArgs(args, ref container);
-		//Console.WriteLine($"ExecFunc: function !{func.Namespace}->{func.Class}::{func.Name} supports {func.AcceptsArgs} args");
-		if (func.AcceptsArgs != args2.Count) return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
-		var (v, e) = func.Call(ref container, [.. args2]);
+		var (args2, e) = ParseFuncArgs(args, file, line, lineNum, ref container);
+		if (func.AcceptsArgs != args2.Count)
+			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
+		if (e != null)
+			return e;
+
+		var (v, e2) = func.Call(ref container, [.. args2]);
 		container.LastReturnedValue = v;
-		return e;
+		return e2;
 	}
-	public static List<LTVar> ParseFuncArgs(string[] args, ref LTRuntimeContainer container) {
+	public static (List<LTVar> Vars, LTError? Error) ParseFuncArgs(string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		List<LTVar> parsed = [];
 		bool doingString = false;
 		foreach (string arg in args) {
@@ -178,6 +202,15 @@ public class LTInterpreter {
 				}
 				else s = arg.Length > 1 ? arg[1..] : "";
 				parsed.Add(LTVar.SimpleMut("str", "arg" + parsed.Count, s));
+				continue;
+			}
+			else if (arg[0] == '$') {
+				// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
+				var v = container.Vars.Where(v => v.Name == arg[1..]);
+				if (v.Any())
+					parsed.Add(v.First());
+				else
+					return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
 				continue;
 			}
 			if (doingString)
@@ -196,7 +229,7 @@ public class LTInterpreter {
 			}
 		}
 		//Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
-		return parsed;
+		return (parsed, null);
 	}
 
 	public static ILifetimeFunc? GetFunc(string funcNs, string funcClass, string funcName, Dictionary<string, LTDefinedFunc> indexedDFuncs, Dictionary<string, LTInternalFunc> indexedIFuncs) {

@@ -8,10 +8,10 @@ public class LTInternalFunc(
 	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs,
 	Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, LTError? Error, LTRuntimeContainer ResultingContainer)> executedFunction
 ) : ILifetimeFunc {
-	public string Name { get; init; } = name;
-	public string Namespace { get; init; } = funcNamespace;
-	public string Class { get; init; } = funcClass;
-	public string Type { get; init; } = returnType;
+	public string Name { get; set; } = name;
+	public string Namespace { get; set; } = funcNamespace;
+	public string Class { get; set; } = funcClass;
+	public string Type { get; set; } = returnType;
 	public string Value = "[IFunc]";
 	public bool Constant = true;
 	public bool IsNull = false;
@@ -19,7 +19,7 @@ public class LTInternalFunc(
 	public int AcceptsArgs => AcceptedArgs.Length;
 	public (string type, string name)[] AcceptedArgs { get; init; } = acceptedArgs;
 	string ILifetimeVar.Value { get => Value; set => Value = value; }
-	bool ILifetimeVar.Constant { get => Constant; init => Constant = value; }
+	bool ILifetimeVar.Constant { get => Constant; set => Constant = value; }
 	bool ILifetimeVar.IsNull { get => IsNull; set => IsNull = value; }
 
 	internal Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, LTError? Error, LTRuntimeContainer ResultingContainer)> execedFunc
