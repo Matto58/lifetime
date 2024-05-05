@@ -46,7 +46,7 @@ public class LTDefinedFunc : LTInternalFunc {
 		SourceCode = functionSrcCode;
 		execedFunc = (container, args) => {
 			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container, true);
-			return (container.LastReturnedValue, new("", "", "", 0), container); // todo: temporary code until i implement the interpreter
+			return (container.LastReturnedValue, null, container);
 		};
 	}
 }

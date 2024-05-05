@@ -11,6 +11,7 @@ public class LTRuntimeContainer {
 	internal List<string> bindedNamespaces = [];
 	internal LTInterpreterState interpreterState = LTInterpreterState.Idle;
 	internal bool nestedFuncExitedFine = true;
+	internal Dictionary<string, string> tempValuesForInterpreter = [];
 
 	public LTRuntimeContainer() {
 		Output = "";

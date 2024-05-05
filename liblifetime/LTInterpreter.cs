@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Mattodev.Lifetime;
 
 public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc }
@@ -40,7 +42,49 @@ public class LTInterpreter {
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
 		container.interpreterState = LTInterpreterState.Executing;
 		var s = MinifyCode(source).Select((l, i) => (l, i));
+		Stopwatch? sw = null;
+		if (DebugMode) sw = Stopwatch.StartNew();
 		foreach ((string line, int i) in s) {
+			switch (container.interpreterState) {
+				case LTInterpreterState.ParsingFunc:
+					if (line == "end") {
+						container.interpreterState = LTInterpreterState.Executing;
+						var (fnArgs, e) = ParseFuncDefArgs(
+							container.tempValuesForInterpreter["fn_args"].Split('\x1'),
+							fileName,
+							container.tempValuesForInterpreter["fn_defln"],
+							int.Parse(container.tempValuesForInterpreter["fn_deflnnum"]));
+						if (e != null) {
+							LogError(e, ref container);
+							return swStop(ref sw, fileName);
+						}
+
+						// todo: implement namespaces and classes to dfuncs
+						LTDefinedFunc f = new(
+							container.tempValuesForInterpreter["fn_name"],
+							"", // namespace
+							"", // class
+							container.tempValuesForInterpreter["fn_type"],
+							LTVarAccess.Public,
+							fnArgs,
+							// whoops! the following line will make the func source code have an extra empty line
+							// (which will get popped by the interpreter anyway when the function gets ran)
+							container.tempValuesForInterpreter["fn_src"].Split('\x1'),
+							fileName
+						);
+						container.DFuncs.Add(f);
+						if (DebugMode)
+							Console.WriteLine($"Defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
+						container.tempValuesForInterpreter.Clear();
+					}
+					else {
+						container.tempValuesForInterpreter["fn_src"] += line + "\x1";
+						if (DebugMode)
+							Console.WriteLine($"Adding {line} to source of {container.tempValuesForInterpreter["fn_name"]}");
+					}
+					continue;
+			}
+
 			string[] ln = line.Split(' ');
 			if (DebugMode) {
 				Console.WriteLine($"LINE {i+1}: {line}");
@@ -56,42 +100,58 @@ public class LTInterpreter {
 							LogError(e, ref container);
 						container.interpreterState = LTInterpreterState.ExitFail;
 						container.nestedFuncExitedFine = false;
-						return false;
+						return swStop(ref sw, fileName);
 					}
-					break;
-				default:
-					break;
+					continue;
 			}
 			switch (ln[0]) {
 				// variable definition: let <type> <variable name> <value>
 				case "let":
-					if (ln.Length < 4) {
+					if (ln.Length < 3) {
 						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
-						return false;
+						return swStop(ref sw, fileName);
 					}
 					// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
 					if (container.Vars.Select(v => v.Name).Contains(ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
-						return false;
+						return swStop(ref sw, fileName);
 					}
 					var (val, e) = ParseFuncArgs(ln[3..], fileName, line, i+1, ref container);
 					if (e != null) {
 						LogError(e, ref container);
-						return false;
+						return swStop(ref sw, fileName);
 					}
 					if (val.Count != 1) {
-						LogError(new($"", fileName, line, i+1), ref container);
-						return false;
+						LogError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName);
 					}
 					val[0].Constant = false;
 					val[0].Name = ln[2];
 					val[0].Type = ln[1];
 					container.Vars.Add(val[0]);
 					break;
+				case "fn":
+					if (ln.Length < 3) {
+						LogError(new($"Missing function type and/or name", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName);
+					}
+					container.interpreterState = LTInterpreterState.ParsingFunc;
+					container.tempValuesForInterpreter = new() {
+						{ "fn_type", ln[1] },
+						{ "fn_name", ln[2] },
+						{ "fn_args", ln.Length > 3 ? string.Join('\x01', ln[3..]) : "" },
+						{ "fn_src", "" },
+						{ "fn_defln", line },
+						{ "fn_deflnnum", (i+1).ToString() }
+					};
+					break;
+				default:
+					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
+					return swStop(ref sw, fileName);
 			}
 		}
 		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
-		return true;
+		return swStop(ref sw, fileName, true);
 	}
 
 	public static string[] MinifyCode(string[] lines) {
@@ -235,6 +295,17 @@ public class LTInterpreter {
 		return (parsed, null);
 	}
 
+	// todo: this function relies heavily on linq-based syntactical sugar, no idea if that's a good thing or not
+	public static ((string Type, string Name)[] Args, LTError? Error) ParseFuncDefArgs(string[] args, string file, string line, int lineNum) {
+		args = args.Where(a => a.Length != 0).ToArray();
+		if (args.Length == 0) return ([], null);
+
+		var a = args.Select(arg => arg.Split(':'));
+		var a2 = a.Where(arg => arg.Length != 2);
+		if (a2.Any())
+			return ([], new($"Missing argument type and/or name from function: {string.Join(':', a2.First())}", file, line, lineNum));
+		return ([..a.Select(a => (a[0], a[1]))], null);
+	}
 	public static ILifetimeFunc? GetFunc(string funcNs, string funcClass, string funcName, Dictionary<string, LTDefinedFunc> indexedDFuncs, Dictionary<string, LTInternalFunc> indexedIFuncs) {
 		if (DebugMode) Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
 		if (indexedDFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var dFunc)) return dFunc;
@@ -256,5 +327,11 @@ public class LTInterpreter {
 			d[func.Namespace + "/" + func.Class + "/" + func.Name] = func;
 		}
 		return d;
+	}
+
+	internal static bool swStop(ref Stopwatch? s, string f, bool v = false) {
+		s?.Stop();
+		if (DebugMode) Console.WriteLine($"Exited {f} in {s?.ElapsedMilliseconds}ms");
+		return v;
 	}
 }
