@@ -45,8 +45,10 @@ public class LTDefinedFunc : LTInternalFunc {
 	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs) {
 		SourceCode = functionSrcCode;
 		execedFunc = (container, args) => {
-			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container, true);
-			return (container.LastReturnedValue, null, container);
+			LTRuntimeContainer container2 = container;
+			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true);
+			container.Output = container2.Output;
+			return (container2.LastReturnedValue, null, container);
 		};
 	}
 }
