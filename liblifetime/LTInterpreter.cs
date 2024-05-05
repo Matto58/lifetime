@@ -1,5 +1,3 @@
-using System.ComponentModel;
-
 namespace Mattodev.Lifetime;
 
 public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc }
@@ -36,13 +34,18 @@ public class LTInterpreter {
 		]
 	};
 
+	// yes, this variable is readwritable, even by external programs, this is by design
+	public static bool DebugMode = false;
+
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
 		container.interpreterState = LTInterpreterState.Executing;
 		var s = MinifyCode(source).Select((l, i) => (l, i));
 		foreach ((string line, int i) in s) {
 			string[] ln = line.Split(' ');
-			Console.WriteLine($"LINE {i+1}: {line}");
-			Console.WriteLine($"PARSED: {string.Join(',', ln)}");
+			if (DebugMode) {
+				Console.WriteLine($"LINE {i+1}: {line}");
+				Console.WriteLine($"PARSED: {string.Join(',', ln)}");
+			}
 
 			switch (ln[0][0]) {
 				case '!':
@@ -152,7 +155,7 @@ public class LTInterpreter {
 			funcClass = s2[0];
 			funcName = s1[1];
 			foreach (string ns in container.bindedNamespaces) {
-				//Console.WriteLine($"Looking for !{funcClass}::{funcName} in binded namespace {ns}...");
+				if (DebugMode) Console.WriteLine($"Looking for !{funcClass}::{funcName} in binded namespace {ns}...");
 				func = GetFunc(ns, funcClass, funcName, indexedDFuncs, indexedIFuncs);
 				if (func != null) {
 					var e = ExecFunc(func, args, file, line, lineNum, ref container);
@@ -167,7 +170,7 @@ public class LTInterpreter {
 		string funcNamespace = s2[0];
 		funcClass = s2[1];
 		funcName = s1[1];
-		//Console.WriteLine($"Looking for !{funcNamespace}->{funcClass}::{funcName}...");
+		if (DebugMode) Console.WriteLine($"Looking for !{funcNamespace}->{funcClass}::{funcName}...");
 		func = GetFunc(funcNamespace, funcClass, funcName, indexedDFuncs, indexedIFuncs);
 		if (func != null) {
 			var e = ExecFunc(func, args, file, line, lineNum, ref container);
@@ -192,7 +195,7 @@ public class LTInterpreter {
 		List<LTVar> parsed = [];
 		bool doingString = false;
 		foreach (string arg in args) {
-			//Console.WriteLine("ParseFuncArgs: parsing " + arg);
+			if (DebugMode) Console.WriteLine("ParseFuncArgs: parsing " + arg);
 			if (arg[0] == '"') {
 				doingString = true;
 				string s = "";
@@ -228,15 +231,15 @@ public class LTInterpreter {
 				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg));
 			}
 		}
-		//Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
+		if (DebugMode) Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
 		return (parsed, null);
 	}
 
 	public static ILifetimeFunc? GetFunc(string funcNs, string funcClass, string funcName, Dictionary<string, LTDefinedFunc> indexedDFuncs, Dictionary<string, LTInternalFunc> indexedIFuncs) {
-		//Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
+		if (DebugMode) Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
 		if (indexedDFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var dFunc)) return dFunc;
 
-		//Console.WriteLine("Not found in dfuncs, trying ifuncs");
+		if (DebugMode) Console.WriteLine("Not found in dfuncs, trying ifuncs");
 		if (indexedIFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var iFunc)) return iFunc;
 
 		return null;
