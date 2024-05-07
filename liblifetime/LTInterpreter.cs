@@ -254,9 +254,9 @@ public class LTInterpreter {
 	public static (List<LTVar> Vars, LTError? Error) ParseFuncArgs(string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		List<LTVar> parsed = [];
 		bool doingString = false;
-		foreach (string arg in args) {
+		foreach ((string arg, int i) in args.Select((a, b) => (a, b))) {
 			if (DebugMode) Console.WriteLine("ParseFuncArgs: parsing " + arg);
-			if (arg[0] == '"') {
+			if (arg[0] == '"' && !doingString) {
 				doingString = true;
 				string s = "";
 				if (arg[^1] == '"') {
@@ -276,6 +276,14 @@ public class LTInterpreter {
 					return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
 				continue;
 			}
+			else if (arg[0] == '!') {
+				var e = FindAndExecFunc(arg[1..], args.Length > i ? args[(i+1)..] : [], file, line, lineNum, ref container);
+				parsed.Add(container.LastReturnedValue!); // todo: scary to put a bang there
+				return (parsed, null);
+			}
+			else if (DebugMode && !doingString)
+				Console.WriteLine($"Unknown arg prefix {arg[0]}, gonna parse differently");
+
 			if (doingString)
 				if (arg[^1] == '"') {
 					parsed[^1].Value += " " + arg[..^1];
