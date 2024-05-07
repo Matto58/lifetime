@@ -192,12 +192,12 @@ public class LTInterpreter {
 			$"Occured in: {error.File}\n" +
 			$"{error.Line.Number}:\t{error.Line.Content}\n";
 		container.Output += msg;
-		container.OutputHandler(msg);
+		container.ErrOutputHandler(msg);
 	}
 	public static void LogWarning(string msg, ref LTRuntimeContainer container) {
 		string msg2 = $"Warning: {msg}\n";
 		container.Output += msg2;
-		container.OutputHandler(msg2);
+		container.ErrOutputHandler(msg2);
 	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {

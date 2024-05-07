@@ -9,6 +9,11 @@ class Program {
 			return Console.ReadLine() ?? "";
 		};
 		rtContainer.OutputHandler += Console.Write;
+		rtContainer.ErrOutputHandler += msg => {
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.Write(msg);
+			Console.ResetColor();
+		};
 		LTInterpreter.DebugMode = args.Contains("-d");
 		return LTInterpreter.Exec(source, "test.lt", ref rtContainer) ? 0 : 1;
 	}
