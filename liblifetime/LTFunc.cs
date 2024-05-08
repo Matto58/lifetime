@@ -3,11 +3,11 @@ namespace Mattodev.Lifetime;
 public interface ILifetimeFunc : ILifetimeVar {
 	public int AcceptsArgs { get; }
 	public bool IgnoreArgCount { get; set; }
-	public (LTVar?, LTError?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams);
+	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams);
 }
 public class LTInternalFunc(
 	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
-	Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, LTError? Error, LTRuntimeContainer ResultingContainer)> executedFunction
+	Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> executedFunction
 ) : ILifetimeFunc {
 	public string Name { get; set; } = name;
 	public string Namespace { get; set; } = funcNamespace;
@@ -24,14 +24,14 @@ public class LTInternalFunc(
 	bool ILifetimeVar.Constant { get => Constant; set => Constant = value; }
 	bool ILifetimeVar.IsNull { get => IsNull; set => IsNull = value; }
 
-	internal Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, LTError? Error, LTRuntimeContainer ResultingContainer)> execedFunc
+	internal Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> execedFunc
 		= executedFunction;
 
 	public LTInternalFunc(
 		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount
 	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, (c, _) => (null, null, c)) {}
 
-	public (LTVar?, LTError?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
+	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
 		var (ret, err, container) = execedFunc(runtimeContainer, funcParams);
 		runtimeContainer.Output = container.Output;
 		return (ret, err);

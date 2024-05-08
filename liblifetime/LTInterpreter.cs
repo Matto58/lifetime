@@ -3,37 +3,7 @@ using System.Diagnostics;
 namespace Mattodev.Lifetime;
 
 public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc }
-public class LTInterpreter {
-	public static readonly LTRuntimeContainer DefaultContainer = new() {
-		IFuncs = [
-			// class: !sys->io
-			new("print", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
-				a.ToList().ForEach(a => LogMsg(a.Value, ref c));
-				return (null, null, c);
-			}),
-			new("print_line", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
-				a.ToList().ForEach(a => LogMsg(a.Value, ref c, true));
-				return (null, null, c);
-			}),
-			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], false, (c, a) =>
-				(LTVar.SimpleMut("str", "_answer", c.InputHandler(a[0].Value)), null, c)),
-			// class: !sys->tools
-			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], false, (c, a) => {
-				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false"), null, c);
-			}),
-			// class: !sys->dev
-			new("bindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
-				c.bindedNamespaces.Add(a[0].Value);
-				return (null, null, c);
-			}),
-			new("unbindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
-				if (c.bindedNamespaces.Contains(a[0].Value))
-					c.bindedNamespaces.Remove(a[0].Value);
-				return (null, null, c);
-			}),
-		]
-	};
-
+public partial class LTInterpreter {
 	// yes, this variable is readwritable, even by external programs, this is by design
 	public static bool DebugMode = false;
 
@@ -253,7 +223,7 @@ public class LTInterpreter {
 
 		var (v, e2) = func.Call(ref container, [.. args2]);
 		container.LastReturnedValue = v;
-		return e2;
+		return e2 != null ? new(e2, file, line, lineNum) : null;
 	}
 	public static (List<LTVar> Vars, LTError? Error) ParseFuncArgs(string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		List<LTVar> parsed = [];

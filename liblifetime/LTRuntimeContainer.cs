@@ -7,6 +7,7 @@ public class LTRuntimeContainer {
 	public List<LTVar> Vars;
 	public List<LTDefinedFunc> DFuncs;
 	public List<LTInternalFunc> IFuncs;
+	public List<FileStream> Handles;
 	public LTVar? LastReturnedValue;
 	internal List<string> bindedNamespaces = [];
 	internal LTInterpreterState interpreterState = LTInterpreterState.Idle;
@@ -16,6 +17,7 @@ public class LTRuntimeContainer {
 	public LTRuntimeContainer() {
 		Output = "";
 		Vars = []; DFuncs = []; IFuncs = [];
+		Handles = [];
 		InputHandler = _ => "";
 		OutputHandler = _ => {};
 		ErrOutputHandler = _ => {};
