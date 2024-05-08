@@ -7,28 +7,26 @@ public class LTInterpreter {
 	public static readonly LTRuntimeContainer DefaultContainer = new() {
 		IFuncs = [
 			// class: !sys->io
-			new("print", "sys", "io", "obj", LTVarAccess.Public, [("str", "string")], (c, a) => {
-				c.Output += a[0].Value;
-				c.OutputHandler(a[0].Value);
+			new("print", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
+				a.ToList().ForEach(a => LogMsg(a.Value, ref c));
 				return (null, null, c);
 			}),
-			new("print_line", "sys", "io", "obj", LTVarAccess.Public, [("str", "string")], (c, a) => {
-				c.Output += a[0].Value + "\n";
-				c.OutputHandler(a[0].Value + "\n");
+			new("print_line", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
+				a.ToList().ForEach(a => LogMsg(a.Value, ref c, true));
 				return (null, null, c);
 			}),
-			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], (c, a) =>
+			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], false, (c, a) =>
 				(LTVar.SimpleMut("str", "_answer", c.InputHandler(a[0].Value)), null, c)),
 			// class: !sys->tools
-			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], (c, a) => {
+			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], false, (c, a) => {
 				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false"), null, c);
 			}),
 			// class: !sys->dev
-			new("bindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], (c, a) => {
+			new("bindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
 				c.bindedNamespaces.Add(a[0].Value);
 				return (null, null, c);
 			}),
-			new("unbindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], (c, a) => {
+			new("unbindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
 				if (c.bindedNamespaces.Contains(a[0].Value))
 					c.bindedNamespaces.Remove(a[0].Value);
 				return (null, null, c);
@@ -67,6 +65,7 @@ public class LTInterpreter {
 							container.tempValuesForInterpreter["fn_type"],
 							LTVarAccess.Public,
 							fnArgs,
+							false,
 							// whoops! the following line will make the func source code have an extra empty line
 							// (which will get popped by the interpreter anyway when the function gets ran)
 							container.tempValuesForInterpreter["fn_src"].Split('\x1'),
@@ -199,6 +198,11 @@ public class LTInterpreter {
 		container.Output += msg2;
 		container.ErrOutputHandler(msg2);
 	}
+	public static void LogMsg(string msg, ref LTRuntimeContainer container, bool newline = false) {
+		msg += newline ? "\n" : "";
+		container.Output += msg;
+		container.OutputHandler(msg);
+	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		string[] s1 = id.Split("::");
@@ -242,7 +246,7 @@ public class LTInterpreter {
 	}
 	public static LTError? ExecFunc(ILifetimeFunc func, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		var (args2, e) = ParseFuncArgs(args, file, line, lineNum, ref container);
-		if (func.AcceptsArgs != args2.Count)
+		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
 			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 		if (e != null)
 			return e;

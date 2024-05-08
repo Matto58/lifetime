@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace Mattodev.Lifetime.CmdLineTool;
 
 class Program {
@@ -14,7 +16,7 @@ class Program {
 			Console.Write(msg);
 			Console.ResetColor();
 		};
-		LTInterpreter.DebugMode = args.Contains("-d");
+		LTInterpreter.DebugMode = args.Contains("-d") || Debugger.IsAttached;
 		return LTInterpreter.Exec(source, "test.lt", ref rtContainer) ? 0 : 1;
 	}
 }

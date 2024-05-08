@@ -2,10 +2,11 @@ namespace Mattodev.Lifetime;
 
 public interface ILifetimeFunc : ILifetimeVar {
 	public int AcceptsArgs { get; }
+	public bool IgnoreArgCount { get; set; }
 	public (LTVar?, LTError?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams);
 }
 public class LTInternalFunc(
-	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs,
+	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
 	Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, LTError? Error, LTRuntimeContainer ResultingContainer)> executedFunction
 ) : ILifetimeFunc {
 	public string Name { get; set; } = name;
@@ -17,6 +18,7 @@ public class LTInternalFunc(
 	public bool IsNull = false;
 	public LTVarAccess Access { get; init; } = access;
 	public int AcceptsArgs => AcceptedArgs.Length;
+	public bool IgnoreArgCount { get; set; } = ignoreArgCount;
 	public (string type, string name)[] AcceptedArgs { get; init; } = acceptedArgs;
 	string ILifetimeVar.Value { get => Value; set => Value = value; }
 	bool ILifetimeVar.Constant { get => Constant; set => Constant = value; }
@@ -26,8 +28,8 @@ public class LTInternalFunc(
 		= executedFunction;
 
 	public LTInternalFunc(
-		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs
-	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, (c, _) => (null, null, c)) {}
+		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount
+	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, (c, _) => (null, null, c)) {}
 
 	public (LTVar?, LTError?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
 		var (ret, err, container) = execedFunc(runtimeContainer, funcParams);
@@ -40,9 +42,9 @@ public class LTDefinedFunc : LTInternalFunc {
 	public new string Value = "[DFunc]";
 
 	public LTDefinedFunc(
-		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs,
+		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
 		string[] functionSrcCode, string fileName
-	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs) {
+	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount) {
 		SourceCode = functionSrcCode;
 		execedFunc = (container, args) => {
 			LTRuntimeContainer container2 = container;
