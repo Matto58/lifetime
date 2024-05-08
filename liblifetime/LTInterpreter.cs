@@ -24,7 +24,7 @@ public partial class LTInterpreter {
 							int.Parse(container.tempValuesForInterpreter["fn_deflnnum"]));
 						if (e != null) {
 							LogError(e, ref container);
-							return swStop(ref sw, fileName);
+							return swStop(ref sw, fileName, ref container);
 						}
 
 						// todo: implement namespaces and classes to dfuncs
@@ -69,7 +69,7 @@ public partial class LTInterpreter {
 							LogError(e, ref container);
 						container.interpreterState = LTInterpreterState.ExitFail;
 						container.nestedFuncExitedFine = false;
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					continue;
 			}
@@ -78,21 +78,21 @@ public partial class LTInterpreter {
 				case "let":
 					if (ln.Length < 3) {
 						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
 					if (container.Vars.Select(v => v.Name).Contains(ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					var (val, e) = ParseFuncArgs(ln[3..], fileName, line, i+1, ref container);
 					if (e != null) {
 						LogError(e, ref container);
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					if (val.Count != 1) {
 						LogError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					val[0].Constant = false;
 					val[0].Name = ln[2];
@@ -102,7 +102,7 @@ public partial class LTInterpreter {
 				case "fn":
 					if (ln.Length < 3) {
 						LogError(new($"Missing function type and/or name", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName);
+						return swStop(ref sw, fileName, ref container);
 					}
 					container.interpreterState = LTInterpreterState.ParsingFunc;
 					container.tempValuesForInterpreter = new() {
@@ -116,11 +116,11 @@ public partial class LTInterpreter {
 					break;
 				default:
 					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
-					return swStop(ref sw, fileName);
+					return swStop(ref sw, fileName, ref container);
 			}
 		}
 		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
-		return swStop(ref sw, fileName, true);
+		return swStop(ref sw, fileName, ref container, true);
 	}
 
 	public static string[] MinifyCode(string[] lines) {
@@ -221,6 +221,7 @@ public partial class LTInterpreter {
 		if (e != null)
 			return e;
 
+		if (DebugMode && lineNum == 7) Debugger.Break();
 		var (v, e2) = func.Call(ref container, [.. args2]);
 		container.LastReturnedValue = v;
 		return e2 != null ? new(e2, file, line, lineNum) : null;
@@ -253,7 +254,7 @@ public partial class LTInterpreter {
 			else if (arg[0] == '!') {
 				var e = FindAndExecFunc(arg[1..], args.Length > i ? args[(i+1)..] : [], file, line, lineNum, ref container);
 				parsed.Add(container.LastReturnedValue!); // todo: scary to put a bang there
-				return (parsed, null);
+				return (parsed, e);
 			}
 			else if (DebugMode && !doingString)
 				Console.WriteLine($"Unknown arg prefix {arg[0]}, gonna parse differently");
@@ -311,8 +312,9 @@ public partial class LTInterpreter {
 		return d;
 	}
 
-	internal static bool swStop(ref Stopwatch? s, string f, bool v = false) {
+	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
 		s?.Stop();
+		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) Console.WriteLine($"Exited {f} in {s?.ElapsedMilliseconds}ms");
 		return v;
 	}

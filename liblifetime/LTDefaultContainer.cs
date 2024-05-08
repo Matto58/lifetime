@@ -28,17 +28,59 @@ public partial class LTInterpreter {
 				return (null, null, c);
 			}),
 			// class: !sys->fl
-			new("open_r", "sys", "fl", "handle", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
+			// todo: avoid copypaste of open_r, open_w and open_rw
+			new("open_r", "sys", "fl", "int32", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
 				if (!File.Exists(a[0].Value))
-					return (null, "", c);
-				c.Handles.Add(File.OpenRead(a[0].Value));
+					return (null, "File not found: " + a[0].Value, c);
+
+				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.Read));
 				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
 			}),
-			new("open_w", "sys", "fl", "handle", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
+			new("open_w", "sys", "fl", "int32", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
+				if (!File.Exists(a[0].Value))
+					return (null, "File not found: " + a[0].Value, c);
+
+				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.Write));
+				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
+			}),
+			new("open_rw", "sys", "fl", "int32", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
+				if (!File.Exists(a[0].Value))
+					return (null, "File not found: " + a[0].Value, c);
+
+				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.ReadWrite));
+				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
+			}),
+			new("close", "sys", "fl", "obj", LTVarAccess.Public, [("int32", "handle")], false, (c, a) => {
+				int handleInx = int.Parse(a[0].Value); // ooo scary!!
+				if (handleInx >= c.Handles.Count)
+					return (null, $"Invalid handle index: {a[0].Value} (>= {c.Handles.Count} handles in container)", c);
+				if (c.Handles[handleInx] == null)
+					return (null, "Handle is closed already", c);
+
+				c.Handles[handleInx]!.Close();
+				c.Handles[handleInx] = null;
 				return (null, null, c);
 			}),
-			new("open_rw", "sys", "fl", "handle", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
-				return (null, null, c);
+			new("read_as_str", "sys", "fl", "str", LTVarAccess.Public, [("int32", "handle")], false, (c, a) => {
+				int handleInx = int.Parse(a[0].Value);
+				if (handleInx >= c.Handles.Count)
+					return (null, $"Invalid handle index: {a[0].Value} (>= {c.Handles.Count} handles in container)", c);
+
+				// misnomer to call a FileStream a handle but imo it kinda makes sense
+				FileStream? handle = c.Handles[handleInx];
+				if (handle == null)
+					return (null, "Handle is closed", c);
+				if (!handle.CanRead)
+					return (null, "Can't read from nonreadable handle", c);
+
+				string content;
+				long currentPos = handle.Position;
+				handle.Position = 0;
+				using (StreamReader s = new(handle, leaveOpen: true))
+					content = s.ReadToEnd();
+				handle.Position = currentPos;
+
+				return (LTVar.SimpleConst("str", "_filecontent", content), null, c);
 			}),
 		]
 	};
