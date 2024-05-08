@@ -43,21 +43,21 @@ public partial class LTInterpreter {
 						);
 						container.DFuncs.Add(f);
 						if (DebugMode)
-							Console.WriteLine($"Defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
+							Console.WriteLine($"Exec: defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
 						container.tempValuesForInterpreter.Clear();
 					}
 					else {
 						container.tempValuesForInterpreter["fn_src"] += line + "\x1";
 						if (DebugMode)
-							Console.WriteLine($"Adding {line} to source of {container.tempValuesForInterpreter["fn_name"]}");
+							Console.WriteLine($"Exec: adding {line} to source of {container.tempValuesForInterpreter["fn_name"]}");
 					}
 					continue;
 			}
 
 			string[] ln = line.Split(' ');
 			if (DebugMode) {
-				Console.WriteLine($"LINE {i+1}: {line}");
-				Console.WriteLine($"PARSED: {string.Join(',', ln)}");
+				Console.WriteLine($"Exec: LINE {i+1}: {line}");
+				Console.WriteLine($"Exec: PARSED: {string.Join(',', ln)}");
 			}
 
 			switch (ln[0][0]) {
@@ -189,7 +189,7 @@ public partial class LTInterpreter {
 			funcClass = s2[0];
 			funcName = s1[1];
 			foreach (string ns in container.bindedNamespaces) {
-				if (DebugMode) Console.WriteLine($"Looking for !{funcClass}::{funcName} in binded namespace {ns}...");
+				if (DebugMode) Console.WriteLine($"FindAndExecFunc: looking for !{funcClass}::{funcName} in binded namespace {ns}...");
 				func = GetFunc(ns, funcClass, funcName, indexedDFuncs, indexedIFuncs);
 				if (func != null) {
 					var e = ExecFunc(func, args, file, line, lineNum, ref container);
@@ -204,7 +204,7 @@ public partial class LTInterpreter {
 		string funcNamespace = s2[0];
 		funcClass = s2[1];
 		funcName = s1[1];
-		if (DebugMode) Console.WriteLine($"Looking for !{funcNamespace}->{funcClass}::{funcName}...");
+		if (DebugMode) Console.WriteLine($"FindAndExecFunc: looking for !{funcNamespace}->{funcClass}::{funcName}...");
 		func = GetFunc(funcNamespace, funcClass, funcName, indexedDFuncs, indexedIFuncs);
 		if (func != null) {
 			var e = ExecFunc(func, args, file, line, lineNum, ref container);
@@ -257,7 +257,7 @@ public partial class LTInterpreter {
 				return (parsed, e);
 			}
 			else if (DebugMode && !doingString)
-				Console.WriteLine($"Unknown arg prefix {arg[0]}, gonna parse differently");
+				Console.WriteLine($"ParseFuncArgs: unknown arg prefix {arg[0]}, gonna parse differently");
 
 			if (doingString)
 				if (arg[^1] == '"') {
@@ -293,7 +293,7 @@ public partial class LTInterpreter {
 		if (DebugMode) Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
 		if (indexedDFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var dFunc)) return dFunc;
 
-		if (DebugMode) Console.WriteLine("Not found in dfuncs, trying ifuncs");
+		if (DebugMode) Console.WriteLine("GetFunc: not found in dfuncs, trying ifuncs");
 		if (indexedIFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var iFunc)) return iFunc;
 
 		return null;
@@ -315,7 +315,7 @@ public partial class LTInterpreter {
 	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
 		s?.Stop();
 		c.Handles.ForEach(h => h?.Close());
-		if (DebugMode) Console.WriteLine($"Exited {f} in {s?.ElapsedMilliseconds}ms");
+		if (DebugMode) Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms");
 		return v;
 	}
 }
