@@ -1,6 +1,6 @@
 namespace Mattodev.Lifetime;
 
-public class LTRuntimeContainer {
+public class LTRuntimeContainer : ICloneable {
 	public string Output;
 	public Func<string, string> InputHandler;
 	public Action<string> OutputHandler, ErrOutputHandler;
@@ -23,5 +23,16 @@ public class LTRuntimeContainer {
 		InputHandler = _ => "";
 		OutputHandler = _ => {};
 		ErrOutputHandler = _ => {};
+	}
+
+	public object Clone() {
+		LTRuntimeContainer clone = (LTRuntimeContainer)MemberwiseClone();
+		clone.Vars = [..Vars];
+		clone.DFuncs = [];
+		DFuncs.ForEach(f => clone.DFuncs.Add((LTDefinedFunc)f.Clone()));
+		clone.IFuncs = [];
+		IFuncs.ForEach(f => clone.IFuncs.Add((LTInternalFunc)f.Clone()));
+		clone.tempValuesForInterpreter = tempValuesForInterpreter.ToDictionary(a => a.Key, a => a.Value);
+		return clone;
 	}
 }

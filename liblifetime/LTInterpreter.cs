@@ -9,10 +9,16 @@ public partial class LTInterpreter {
 
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
 		container.interpreterState = LTInterpreterState.Executing;
-		var s = MinifyCode(source).Select((l, i) => (l, i));
+		var s = MinifyCode(source).Select((l, i) => (l, i)).ToArray();
 		Stopwatch? sw = null;
 		if (DebugMode) sw = Stopwatch.StartNew();
 		foreach ((string line, int i) in s) {
+			string[] ln = line.Split(' ');
+			if (DebugMode) {
+				Console.WriteLine($"Exec: LINE {i+1}: {line}");
+				Console.WriteLine($"Exec: PARSED: {string.Join(',', ln)}");
+			}
+
 			switch (container.interpreterState) {
 				case LTInterpreterState.ParsingFunc:
 					if (line == "end") {
@@ -27,11 +33,10 @@ public partial class LTInterpreter {
 							return swStop(ref sw, fileName, ref container);
 						}
 
-						// todo: implement classes to dfuncs
 						LTDefinedFunc f = new(
 							container.tempValuesForInterpreter["fn_name"],
 							container._namespace,
-							"", // class
+							container.tempValuesForInterpreter.GetValueOrDefault("class", ""),
 							container.tempValuesForInterpreter["fn_type"],
 							LTVarAccess.Public,
 							fnArgs,
@@ -44,20 +49,25 @@ public partial class LTInterpreter {
 						container.DFuncs.Add(f);
 						if (DebugMode)
 							Console.WriteLine($"Exec: defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
+
+						string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
 						container.tempValuesForInterpreter.Clear();
+						container.tempValuesForInterpreter["class"] = c;
 					}
 					else {
 						container.tempValuesForInterpreter["fn_src"] += line + "\x1";
 						if (DebugMode)
-							Console.WriteLine($"Exec: adding {line} to source of {container.tempValuesForInterpreter["fn_name"]}");
+							Console.WriteLine($"Exec: adding {line} to source of dfunc {container.tempValuesForInterpreter["fn_name"]}");
 					}
 					continue;
-			}
-
-			string[] ln = line.Split(' ');
-			if (DebugMode) {
-				Console.WriteLine($"Exec: LINE {i+1}: {line}");
-				Console.WriteLine($"Exec: PARSED: {string.Join(',', ln)}");
+				default:
+					if (line == "end") {
+						if (!container.tempValuesForInterpreter.Remove("class")) {
+							LogError(new($"Unexpected end keyword", fileName, line, i+1), ref container);
+							return swStop(ref sw, fileName, ref container);	
+						} else continue;
+					}
+					break;
 			}
 
 			switch (ln[0][0]) {
@@ -80,9 +90,10 @@ public partial class LTInterpreter {
 						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
-					// todo: filter container vars by class and do the check on that too after implementing class definitions
-					string ns = container._namespace; // dumb hack numero dos
-					if (container.Vars.Where(v => v.Namespace == ns).Select(v => v.Name).Contains(ln[2])) {
+					// dumb hack numero dos
+					string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
+					string ns = container._namespace;
+					if (container.Vars.Where(v => v.Namespace == ns && v.Class == c).Select(v => v.Name).Contains(ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
@@ -99,6 +110,7 @@ public partial class LTInterpreter {
 					val[0].Name = ln[2];
 					val[0].Type = ln[1];
 					val[0].Namespace = container._namespace;
+					val[0].Class = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
 					container.Vars.Add(val[0]);
 					break;
 				case "fn":
@@ -107,7 +119,7 @@ public partial class LTInterpreter {
 						return swStop(ref sw, fileName, ref container);
 					}
 					container.interpreterState = LTInterpreterState.ParsingFunc;
-					container.tempValuesForInterpreter = new() {
+					Dictionary<string, string> funcProps = new() {
 						{ "fn_type", ln[1] },
 						{ "fn_name", ln[2] },
 						{ "fn_args", ln.Length > 3 ? string.Join('\x01', ln[3..]) : "" },
@@ -115,14 +127,27 @@ public partial class LTInterpreter {
 						{ "fn_defln", line },
 						{ "fn_deflnnum", (i+1).ToString() }
 					};
+					foreach (var (k, v) in funcProps.Select(kvp => (kvp.Key, kvp.Value)))
+						container.tempValuesForInterpreter.Add(k, v);
 					break;
 				case "namespace":
 					if (ln.Length != 2) {
 						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
+					if (container._namespace != "") {
+						LogError(new("Namespace already specified", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName, ref container);
+					}
 					container._namespace = ln[1];
-					Console.WriteLine($"Exec: container namespace is now {container._namespace}");
+					if (DebugMode) Console.WriteLine($"Exec: container namespace is now {container._namespace}");
+					break;
+				case "class":
+					if (ln.Length != 2) {
+						LogError(new(ln.Length < 2 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName, ref container);
+					}
+					container.tempValuesForInterpreter.Add("class", ln[1]);
 					break;
 				default:
 					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
@@ -226,10 +251,10 @@ public partial class LTInterpreter {
 	}
 	public static LTError? ExecFunc(ILifetimeFunc func, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		var (args2, e) = ParseFuncArgs(args, file, line, lineNum, ref container);
-		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
-			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 		if (e != null)
 			return e;
+		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
+			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 
 		if (DebugMode && lineNum == 7) Debugger.Break();
 		var (v, e2) = func.Call(ref container, [.. args2]);
@@ -253,9 +278,10 @@ public partial class LTInterpreter {
 				continue;
 			}
 			else if (arg[0] == '$') {
-				// todo: filter container vars by class and do the check on that too after implementing class definitions
-				string ns = container._namespace; // dumb ass hack
-				var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns);
+				// dumb ass hack
+				string ns = container._namespace;
+				string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
+				var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns && v.Class == c);
 				if (v.Any())
 					parsed.Add(v.First());
 				else
@@ -263,7 +289,7 @@ public partial class LTInterpreter {
 				continue;
 			}
 			else if (arg[0] == '!') {
-				var e = FindAndExecFunc(arg[1..], args.Length > i ? args[(i+1)..] : [], file, line, lineNum, ref container);
+				var e = FindAndExecFunc(arg[1..], args.Length >= i ? args[(i+1)..] : [], file, line, lineNum, ref container);
 				parsed.Add(container.LastReturnedValue!); // todo: scary to put a bang there
 				return (parsed, e);
 			}
@@ -328,11 +354,11 @@ public partial class LTInterpreter {
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
 			Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms, now listing dfuncs:");
-			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type} !{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length} lines)"));
+			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length} lines)"));
 			Console.WriteLine("swStop: now ifuncs:");
-			c.IFuncs.ForEach(f => Console.WriteLine($"\t{f.Type} !{f.Namespace}->{f.Class}::{f.Name}"));
+			c.IFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name}"));
 			Console.WriteLine("swStop: now vars:");
-			c.Vars.ForEach(f => Console.WriteLine($"\t{f.Type} ${f.Namespace}->{f.Class}::{f.Name} = {f.Value}"));
+			c.Vars.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.Value}"));
 			Console.WriteLine("swStop: binded namespaces: " + string.Join(", ", c.bindedNamespaces));
 		}
 		return v;

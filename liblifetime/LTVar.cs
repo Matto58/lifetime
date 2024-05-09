@@ -1,7 +1,7 @@
 namespace Mattodev.Lifetime;
 
 public enum LTVarAccess { Public, Private }
-public interface ILifetimeVar {
+public interface ILifetimeVar : ICloneable {
 	public string Name { get; set; }
 	public string Namespace { get; set; }
 	public string Class { get; set; }
@@ -26,4 +26,6 @@ public class LTVar(string name, string varNamespace, string varClass, string var
 		=> new(name, "", "", "", value, true, LTVarAccess.Public);
 	public static LTVar SimpleMut(string type, string name, string? value)
 		=> new(name, "", "", "", value, false, LTVarAccess.Public);
+
+	public object Clone() => MemberwiseClone();
 }

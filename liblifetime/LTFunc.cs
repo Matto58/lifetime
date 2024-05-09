@@ -32,10 +32,12 @@ public class LTInternalFunc(
 	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, (c, _) => (null, null, c)) {}
 
 	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
-		var (ret, err, container) = execedFunc(runtimeContainer, funcParams);
+		var (ret, err, container) = execedFunc((LTRuntimeContainer)runtimeContainer.Clone(), funcParams);
 		runtimeContainer.Output = container.Output;
 		return (ret, err);
 	}
+
+	public object Clone() => MemberwiseClone();
 }
 public class LTDefinedFunc : LTInternalFunc {
 	public string[] SourceCode { get; set; }
@@ -47,7 +49,16 @@ public class LTDefinedFunc : LTInternalFunc {
 	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount) {
 		SourceCode = functionSrcCode;
 		execedFunc = (container, args) => {
-			LTRuntimeContainer container2 = container;
+			LTRuntimeContainer container2 = (LTRuntimeContainer)container.Clone();
+			container2._namespace = funcNamespace;
+			container2.tempValuesForInterpreter["class"] = funcClass;
+			foreach ((ILifetimeVar arg, int i) in args.Select((a, i) => (a, i))) {
+				arg.Type = acceptedArgs[i].type;
+				arg.Namespace = funcNamespace;
+				arg.Class = funcClass;
+				arg.Name = acceptedArgs[i].name;
+				container2.Vars.Add((LTVar)arg);
+			}
 			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true);
 			container.Output = container2.Output;
 			return (container2.LastReturnedValue, null, container);
