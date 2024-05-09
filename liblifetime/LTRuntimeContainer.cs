@@ -13,6 +13,8 @@ public class LTRuntimeContainer {
 	internal LTInterpreterState interpreterState = LTInterpreterState.Idle;
 	internal bool nestedFuncExitedFine = true;
 	internal Dictionary<string, string> tempValuesForInterpreter = [];
+	internal string _namespace = "";
+	public string Namespace => _namespace;
 
 	public LTRuntimeContainer() {
 		Output = "";

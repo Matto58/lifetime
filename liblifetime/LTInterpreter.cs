@@ -27,10 +27,10 @@ public partial class LTInterpreter {
 							return swStop(ref sw, fileName, ref container);
 						}
 
-						// todo: implement namespaces and classes to dfuncs
+						// todo: implement classes to dfuncs
 						LTDefinedFunc f = new(
 							container.tempValuesForInterpreter["fn_name"],
-							"", // namespace
+							container._namespace,
 							"", // class
 							container.tempValuesForInterpreter["fn_type"],
 							LTVarAccess.Public,
@@ -80,8 +80,9 @@ public partial class LTInterpreter {
 						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
-					// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
-					if (container.Vars.Select(v => v.Name).Contains(ln[2])) {
+					// todo: filter container vars by class and do the check on that too after implementing class definitions
+					string ns = container._namespace; // dumb hack numero dos
+					if (container.Vars.Where(v => v.Namespace == ns).Select(v => v.Name).Contains(ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
@@ -97,6 +98,7 @@ public partial class LTInterpreter {
 					val[0].Constant = false;
 					val[0].Name = ln[2];
 					val[0].Type = ln[1];
+					val[0].Namespace = container._namespace;
 					container.Vars.Add(val[0]);
 					break;
 				case "fn":
@@ -113,6 +115,14 @@ public partial class LTInterpreter {
 						{ "fn_defln", line },
 						{ "fn_deflnnum", (i+1).ToString() }
 					};
+					break;
+				case "namespace":
+					if (ln.Length != 2) {
+						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName, ref container);
+					}
+					container._namespace = ln[1];
+					Console.WriteLine($"Exec: container namespace is now {container._namespace}");
 					break;
 				default:
 					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
@@ -243,8 +253,9 @@ public partial class LTInterpreter {
 				continue;
 			}
 			else if (arg[0] == '$') {
-				// todo: filter container vars by namespace and class and do the check on that after implementing class and namespace definitions
-				var v = container.Vars.Where(v => v.Name == arg[1..]);
+				// todo: filter container vars by class and do the check on that too after implementing class definitions
+				string ns = container._namespace; // dumb ass hack
+				var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns);
 				if (v.Any())
 					parsed.Add(v.First());
 				else
@@ -315,7 +326,15 @@ public partial class LTInterpreter {
 	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
 		s?.Stop();
 		c.Handles.ForEach(h => h?.Close());
-		if (DebugMode) Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms");
+		if (DebugMode) {
+			Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms, now listing dfuncs:");
+			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type} !{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length} lines)"));
+			Console.WriteLine("swStop: now ifuncs:");
+			c.IFuncs.ForEach(f => Console.WriteLine($"\t{f.Type} !{f.Namespace}->{f.Class}::{f.Name}"));
+			Console.WriteLine("swStop: now vars:");
+			c.Vars.ForEach(f => Console.WriteLine($"\t{f.Type} ${f.Namespace}->{f.Class}::{f.Name} = {f.Value}"));
+			Console.WriteLine("swStop: binded namespaces: " + string.Join(", ", c.bindedNamespaces));
+		}
 		return v;
 	}
 }
