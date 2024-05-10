@@ -284,7 +284,7 @@ public partial class LTInterpreter {
 					doingString = false;
 				}
 				else s = arg.Length > 1 ? arg[1..] : "";
-				parsed.Add(LTVar.SimpleMut("str", "arg" + parsed.Count, s));
+				parsed.Add(LTVar.SimpleMut("str", "arg" + parsed.Count, s, container.Namespace, container.Class));
 				continue;
 			}
 			else if (arg[0] == '$') {
@@ -329,12 +329,12 @@ public partial class LTInterpreter {
 				}
 				else parsed[^1].Value += " " + arg;
 			else if (int.TryParse(arg, out int n))
-				parsed.Add(LTVar.SimpleMut("int32", "arg" + parsed.Count, n.ToString()));
+				parsed.Add(LTVar.SimpleMut("int32", "arg" + parsed.Count, n.ToString(), container.Namespace, container.Class));
 			else if (bool.TryParse(arg, out bool b))
-				parsed.Add(LTVar.SimpleMut("bool", "arg" + parsed.Count, b.ToString()));
+				parsed.Add(LTVar.SimpleMut("bool", "arg" + parsed.Count, b.ToString(), container.Namespace, container.Class));
 			else {
 				LogWarning($"Unable to parse {arg} as a str, returning it as an obj", ref container);
-				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg));
+				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg, container.Namespace, container.Class));
 			}
 		}
 		if (DebugMode) Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");

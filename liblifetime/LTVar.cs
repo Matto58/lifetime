@@ -22,10 +22,10 @@ public class LTVar(string name, string varNamespace, string varClass, string var
 	public bool IsNull { get; set; } = varValue is null;
 	public LTVarAccess Access { get; init; } = access;
 
-	public static LTVar SimpleConst(string type, string name, string? value)
-		=> new(name, "", "", "", value, true, LTVarAccess.Public);
-	public static LTVar SimpleMut(string type, string name, string? value)
-		=> new(name, "", "", "", value, false, LTVarAccess.Public);
+	public static LTVar SimpleConst(string type, string name, string? value, string _namespace, string _class)
+		=> new(name, _namespace, _class, type, value, true, LTVarAccess.Public);
+	public static LTVar SimpleMut(string type, string name, string? value, string _namespace, string _class)
+		=> new(name, _namespace, _class, type, value, false, LTVarAccess.Public);
 
 	public object Clone() => MemberwiseClone();
 }

@@ -53,10 +53,11 @@ public class LTDefinedFunc : LTInternalFunc {
 			container2._namespace = funcNamespace;
 			container2.tempValuesForInterpreter["class"] = funcClass;
 			foreach ((ILifetimeVar arg, int i) in args.Select((a, i) => (a, i))) {
-				arg.Type = acceptedArgs[i].type;
+				if (!ignoreArgCount && arg.Type != acceptedArgs[i].type)
+					return (null, $"Type mismatch for argument {acceptedArgs[i].name} (expecting {acceptedArgs[i].type}, got {arg.Type})", container);
 				arg.Namespace = funcNamespace;
 				arg.Class = funcClass;
-				arg.Name = acceptedArgs[i].name;
+				arg.Name = ignoreArgCount ? arg.Name : acceptedArgs[i].name;
 				container2.Vars.Add((LTVar)arg);
 			}
 			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true);

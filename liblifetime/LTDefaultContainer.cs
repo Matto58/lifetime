@@ -12,13 +12,16 @@ public partial class LTInterpreter {
 				return (null, null, c);
 			}),
 			new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], false, (c, a) =>
-				(LTVar.SimpleMut("str", "_answer", c.InputHandler(a[0].Value)), null, c)),
+				(LTVar.SimpleMut("str", "_answer", c.InputHandler(a[0].Value), "sys", "io"), null, c)),
 			// class: !sys->tools
 			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], false, (c, a) => {
-				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false"), null, c);
+				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false", "sys", "tools"), null, c);
 			}),
 			new("split_str", "sys", "tools", "str_array", LTVarAccess.Public, [("str", "string"), ("str", "separator")], false, (c, a) => {
-				return (LTVar.SimpleMut("str_array", "_arr", ""), null, c);
+				return (LTVar.SimpleMut("str_array", "_arr", "", "sys", "tools"), null, c);
+			}),
+			new("create_array", "sys", "tools", "str_array", LTVarAccess.Public, [], true, (c, a) => {
+				return (LTVar.SimpleMut("str_array", "_arr", string.Join('\x1', a.Select(a => a.Value)), "sys", "tools"), null, c);
 			}),
 			// class: !sys->dev
 			new("bindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
@@ -37,21 +40,21 @@ public partial class LTInterpreter {
 					return (null, "File not found: " + a[0].Value, c);
 
 				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.Read));
-				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
+				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString(), "sys", "fl"), null, c);
 			}),
 			new("open_w", "sys", "fl", "int32", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
 				if (!File.Exists(a[0].Value))
 					return (null, "File not found: " + a[0].Value, c);
 
 				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.Write));
-				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
+				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString(), "sys", "fl"), null, c);
 			}),
 			new("open_rw", "sys", "fl", "int32", LTVarAccess.Public, [("str", "filename")], false, (c, a) => {
 				if (!File.Exists(a[0].Value))
 					return (null, "File not found: " + a[0].Value, c);
 
 				c.Handles.Add(File.Open(a[0].Value, FileMode.Open, FileAccess.ReadWrite));
-				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString()), null, c);
+				return (LTVar.SimpleConst("int32", "_handleinx", (c.Handles.Count-1).ToString(), "sys", "fl"), null, c);
 			}),
 			new("close", "sys", "fl", "obj", LTVarAccess.Public, [("int32", "handle")], false, (c, a) => {
 				int handleInx = int.Parse(a[0].Value); // ooo scary!!
@@ -83,7 +86,7 @@ public partial class LTInterpreter {
 					content = s.ReadToEnd();
 				handle.Position = currentPos;
 
-				return (LTVar.SimpleConst("str", "_filecontent", content), null, c);
+				return (LTVar.SimpleConst("str", "_filecontent", content, "sys", "fl"), null, c);
 			}),
 		]
 	};
