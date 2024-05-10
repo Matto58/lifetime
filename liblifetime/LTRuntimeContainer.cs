@@ -5,8 +5,8 @@ public class LTRuntimeContainer : ICloneable {
 	public Func<string, string> InputHandler;
 	public Action<string> OutputHandler, ErrOutputHandler;
 	public List<LTVar> Vars;
-	public List<LTDefinedFunc> DFuncs;
-	public List<LTInternalFunc> IFuncs;
+	public Dictionary<string, LTDefinedFunc> DFuncs;
+	public Dictionary<string, LTInternalFunc> IFuncs;
 	public List<FileStream?> Handles;
 	public LTVar? LastReturnedValue;
 	internal List<string> bindedNamespaces = [];
@@ -26,13 +26,22 @@ public class LTRuntimeContainer : ICloneable {
 		ErrOutputHandler = _ => {};
 	}
 
+	public static LTRuntimeContainer Create(List<LTInternalFunc> iFuncs, List<LTDefinedFunc> dFuncs) {
+		LTRuntimeContainer c = new();
+		iFuncs.ForEach(c.AppendIFunc);
+		dFuncs.ForEach(c.AppendDFunc);
+		return c;
+	}
+	public void AppendDFunc(LTDefinedFunc f) => DFuncs.Add($"{f.Namespace}/{f.Class}/{f.Name}", f);
+	public void AppendIFunc(LTInternalFunc f) => IFuncs.Add($"{f.Namespace}/{f.Class}/{f.Name}", f);
+
 	public object Clone() {
 		LTRuntimeContainer clone = (LTRuntimeContainer)MemberwiseClone();
 		clone.Vars = [..Vars];
 		clone.DFuncs = [];
-		DFuncs.ForEach(f => clone.DFuncs.Add((LTDefinedFunc)f.Clone()));
+		DFuncs.ToList().ForEach(f => clone.AppendDFunc((LTDefinedFunc)f.Value.Clone()));
 		clone.IFuncs = [];
-		IFuncs.ForEach(f => clone.IFuncs.Add((LTInternalFunc)f.Clone()));
+		IFuncs.ToList().ForEach(f => clone.AppendIFunc((LTInternalFunc)f.Value.Clone()));
 		clone.tempValuesForInterpreter = tempValuesForInterpreter.ToDictionary(a => a.Key, a => a.Value);
 		return clone;
 	}

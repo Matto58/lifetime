@@ -46,7 +46,7 @@ public partial class LTInterpreter {
 							container.tempValuesForInterpreter["fn_src"].Split('\x1'),
 							fileName
 						);
-						container.DFuncs.Add(f);
+						container.AppendDFunc(f);
 						if (DebugMode)
 							Console.WriteLine($"Exec: defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
 
@@ -210,8 +210,6 @@ public partial class LTInterpreter {
 	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
-		var indexedDFuncs = indexDFuncs(container);
-		var indexedIFuncs = indexIFuncs(container);
 		string[] s1 = id.Split("::");
 		if (s1.Length != 2) {
 			if (string.IsNullOrEmpty(s1[0]))
@@ -219,7 +217,7 @@ public partial class LTInterpreter {
 			if (DebugMode)
 				Console.WriteLine($"FindAndExecFunc: looking for !{s1[0]} in namespace '{container.Namespace}', class '{container.Class}'...");
 
-			ILifetimeFunc? f = GetFunc(container.Namespace, container.Class, s1[0], indexedDFuncs, indexedIFuncs);
+			ILifetimeFunc? f = GetFunc(container.Namespace, container.Class, s1[0], container.DFuncs, container.IFuncs);
 			if (f == null) return new($"Invalid function identifier: {id}", file, line, lineNum);
 
 			var e = ExecFunc(f, args, file, line, lineNum, ref container);
@@ -236,7 +234,7 @@ public partial class LTInterpreter {
 			funcName = s1[1];
 			foreach (string ns in container.bindedNamespaces) {
 				if (DebugMode) Console.WriteLine($"FindAndExecFunc: looking for !{funcClass}::{funcName} in binded namespace {ns}...");
-				func = GetFunc(ns, funcClass, funcName, indexedDFuncs, indexedIFuncs);
+				func = GetFunc(ns, funcClass, funcName, container.DFuncs, container.IFuncs);
 				if (func != null) {
 					var e = ExecFunc(func, args, file, line, lineNum, ref container);
 					container.nestedFuncExitedFine = e == null;
@@ -251,7 +249,7 @@ public partial class LTInterpreter {
 		funcClass = s2[1];
 		funcName = s1[1];
 		if (DebugMode) Console.WriteLine($"FindAndExecFunc: looking for !{funcNamespace}->{funcClass}::{funcName}...");
-		func = GetFunc(funcNamespace, funcClass, funcName, indexedDFuncs, indexedIFuncs);
+		func = GetFunc(funcNamespace, funcClass, funcName, container.DFuncs, container.IFuncs);
 		if (func != null) {
 			var e = ExecFunc(func, args, file, line, lineNum, ref container);
 			container.nestedFuncExitedFine = e == null;
@@ -361,6 +359,7 @@ public partial class LTInterpreter {
 
 		return null;
 	}
+	/*
 	internal static Dictionary<string, LTDefinedFunc> indexDFuncs(LTRuntimeContainer container) {
 		Dictionary<string, LTDefinedFunc> d = [];
 		foreach (LTDefinedFunc func in container.DFuncs)
@@ -374,17 +373,28 @@ public partial class LTInterpreter {
 		}
 		return d;
 	}
+	*/
 
 	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
 		s?.Stop();
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
 			Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms, now listing dfuncs:");
-			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length-1} lines)"));
+			c.DFuncs
+				.Select(a => a.Value)
+				.ToList()
+				.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length-1} lines)"));
+
 			Console.WriteLine("swStop: now ifuncs:");
-			c.IFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name}"));
+			c.IFuncs
+				.Select(a => a.Value)
+				.ToList()
+				.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name}"));
+
 			Console.WriteLine("swStop: now vars:");
-			c.Vars.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.Value}"));
+			c.Vars
+				.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.Value}"));
+
 			Console.WriteLine("swStop: binded namespaces: " + string.Join(", ", c.bindedNamespaces));
 		}
 		return v;
