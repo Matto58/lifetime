@@ -10,10 +10,9 @@ namespace lifetime_snippet # namespace definition, there can only be one per fil
 # class definition: class <class name> <pub/priv for public/private class; public: callable by everyone, private: callable by this namespace>
 class program pub
 	# function definition: fn <return type> <function name> <arguments> <[OPTIONAL] pub/priv for public/private function, takes class access by default>
-	# int32 namespace->program::main array>str is always the entry point
-	# type_with_type_parameter>other_type is like c#'s TypeWithTypeParameter<OtherType>
+	# int32 !namespace->program::main str_array is always the entry point
 	# parameters are formatted like type1:arg1 type2:arg2 etc.
-	fn int32 main array>str:args
+	fn int32 main str_array:args
 		# builtin function calling: !<namespace>-><class>::<function> <arguments>
 		!sys->dev::bindns "sys" # allows the classes of the specified namespace to be used everywhere
 		!io::print_line "hello world!" # prints "hello world!" with a new line

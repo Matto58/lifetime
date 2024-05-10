@@ -15,6 +15,7 @@ public class LTRuntimeContainer : ICloneable {
 	internal Dictionary<string, string> tempValuesForInterpreter = [];
 	internal string _namespace = "";
 	public string Namespace => _namespace;
+	public string Class => tempValuesForInterpreter.GetValueOrDefault("class", "");
 
 	public LTRuntimeContainer() {
 		Output = "";

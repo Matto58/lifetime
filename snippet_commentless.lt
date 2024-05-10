@@ -1,7 +1,7 @@
 namespace lifetime_snippet
 
 class program pub
-	fn int32 main array>str:args
+	fn int32 main str_array:args
 		!sys->dev::bindns "sys"
 		!io::print_line "hello world!"
 

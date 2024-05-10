@@ -35,8 +35,8 @@ public partial class LTInterpreter {
 
 						LTDefinedFunc f = new(
 							container.tempValuesForInterpreter["fn_name"],
-							container._namespace,
-							container.tempValuesForInterpreter.GetValueOrDefault("class", ""),
+							container.Namespace,
+							container.Class,
 							container.tempValuesForInterpreter["fn_type"],
 							LTVarAccess.Public,
 							fnArgs,
@@ -50,7 +50,7 @@ public partial class LTInterpreter {
 						if (DebugMode)
 							Console.WriteLine($"Exec: defined function {f.Name} ({f.SourceCode.Length-1} lines, {f.AcceptsArgs} args)");
 
-						string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
+						string c = container.Class;
 						container.tempValuesForInterpreter.Clear();
 						container.tempValuesForInterpreter["class"] = c;
 					}
@@ -109,8 +109,8 @@ public partial class LTInterpreter {
 					val[0].Constant = false;
 					val[0].Name = ln[2];
 					val[0].Type = ln[1];
-					val[0].Namespace = container._namespace;
-					val[0].Class = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
+					val[0].Namespace = container.Namespace;
+					val[0].Class = container.Class;
 					container.Vars.Add(val[0]);
 					break;
 				case "fn":
@@ -210,13 +210,24 @@ public partial class LTInterpreter {
 	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
-		string[] s1 = id.Split("::");
-		if (s1.Length != 2) return new($"Invalid function identifier: {id}", file, line, lineNum);
-		string[] s2 = s1[0].Split("->");
-		if (s2.Length > 2) return new($"Invalid function identifier: {id}", file, line, lineNum);
-
 		var indexedDFuncs = indexDFuncs(container);
 		var indexedIFuncs = indexIFuncs(container);
+		string[] s1 = id.Split("::");
+		if (s1.Length != 2) {
+			if (string.IsNullOrEmpty(s1[0]))
+				return new("Missing function identifier", file, line, lineNum);
+			if (DebugMode)
+				Console.WriteLine($"FindAndExecFunc: looking for !{s1[0]} in namespace '{container.Namespace}', class '{container.Class}'...");
+
+			ILifetimeFunc? f = GetFunc(container.Namespace, container.Class, s1[0], indexedDFuncs, indexedIFuncs);
+			if (f == null) return new($"Invalid function identifier: {id}", file, line, lineNum);
+
+			var e = ExecFunc(f, args, file, line, lineNum, ref container);
+			container.nestedFuncExitedFine = e == null;
+			return e;
+		}
+		string[] s2 = s1[0].Split("->");
+		if (s2.Length > 2) return new($"Invalid function identifier: {id}", file, line, lineNum);
 
 		ILifetimeFunc? func = null;
 		string funcClass, funcName;
@@ -256,7 +267,6 @@ public partial class LTInterpreter {
 		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
 			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 
-		if (DebugMode && lineNum == 7) Debugger.Break();
 		var (v, e2) = func.Call(ref container, [.. args2]);
 		container.LastReturnedValue = v;
 		return e2 != null ? new(e2, file, line, lineNum) : null;
@@ -354,7 +364,7 @@ public partial class LTInterpreter {
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
 			Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms, now listing dfuncs:");
-			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length} lines)"));
+			c.DFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name} ({f.SourceCode.Length-1} lines)"));
 			Console.WriteLine("swStop: now ifuncs:");
 			c.IFuncs.ForEach(f => Console.WriteLine($"\t{f.Type}\t!{f.Namespace}->{f.Class}::{f.Name}"));
 			Console.WriteLine("swStop: now vars:");

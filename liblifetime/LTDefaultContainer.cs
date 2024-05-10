@@ -17,6 +17,9 @@ public partial class LTInterpreter {
 			new("is_null", "sys", "tools", "bool", LTVarAccess.Public, [("obj", "object")], false, (c, a) => {
 				return (LTVar.SimpleConst("bool", "_ret", a[0].IsNull ? "true" : "false"), null, c);
 			}),
+			new("split_str", "sys", "tools", "str_array", LTVarAccess.Public, [("str", "string"), ("str", "separator")], false, (c, a) => {
+				return (LTVar.SimpleMut("str_array", "_arr", ""), null, c);
+			}),
 			// class: !sys->dev
 			new("bindns", "sys", "dev", "obj", LTVarAccess.Public, [("str", "namespace")], false, (c, a) => {
 				c.bindedNamespaces.Add(a[0].Value);
