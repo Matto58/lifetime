@@ -289,13 +289,29 @@ public partial class LTInterpreter {
 			}
 			else if (arg[0] == '$') {
 				// dumb ass hack
-				string ns = container._namespace;
-				string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
-				var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns && v.Class == c);
-				if (v.Any())
-					parsed.Add(v.First());
-				else
+				string ns = container.Namespace;
+				string c = container.Class;
+
+				// yes im aware i practically ripped this from FindAndExecFunc, not my fault its great
+				string s0 = arg[1..];
+				if (string.IsNullOrEmpty(s0))
+					return ([], new("Missing variable identifier", file, line, lineNum));
+
+				string[] s1 = s0.Split("::");
+				if (s1.Length != 2) {
+					var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns && v.Class == c);
+					if (v.Any()) {
+						parsed.Add(v.First());
+						continue;
+					}
 					return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
+				}
+				string[] s2 = s1[0].Split("->");
+				if (s2.Length > 2) return ([], new($"Invalid variable identifier: {arg}", file, line, lineNum));
+
+				var v2 = container.Vars.Where(v => v.Name == s1[1] && v.Namespace == s2[0] && v.Class == s2[1]);
+				if (v2.Any()) parsed.Add(v2.First());
+				else return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
 				continue;
 			}
 			else if (arg[0] == '!') {
