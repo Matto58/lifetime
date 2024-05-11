@@ -132,9 +132,26 @@ public partial class LTInterpreter {
 					foreach (var (k, v) in funcProps.Select(kvp => (kvp.Key, kvp.Value)))
 						container.tempValuesForInterpreter.Add(k, v);
 					break;
-				//case "if":
-				//
-				//	break;
+				case "if":
+					// todo: o pini e ni
+					string expression = Between(line, "if ", " then")?.Trim() ?? "";
+					if (expression.Length == 0) {
+						LogError(new($"Missing if expression", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName, ref container);
+					}
+					break;
+				case "ret":
+					if (ln.Length < 2)
+						return swStop(ref sw, fileName, ref container, true);
+
+					(var vals, e) = ParseFuncArgs(ln[1..], fileName, line, i+1, ref container);
+					if (e != null) return swStop(ref sw, fileName, ref container);
+					if (vals.Count != 1) {
+						LogError(new("Too many returned values, only one can be returned", fileName, line, i+1), ref container);
+						return swStop(ref sw, fileName, ref container);
+					}
+					container.LastReturnedValue = vals[0];
+					return swStop(ref sw, fileName, ref container, true);
 				case "namespace":
 					if (ln.Length != 2) {
 						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
@@ -363,6 +380,16 @@ public partial class LTInterpreter {
 		if (indexedIFuncs.TryGetValue(funcNs + "/" + funcClass + "/" + funcName, out var iFunc)) return iFunc;
 
 		return null;
+	}
+
+	// adapted from https://stackoverflow.com/a/17252672
+	// yknow what they say, even the most senior of programmers still actively use stackoverflow
+	public static string? Between(string s, string sideA, string sideB) {
+		int inx = s.IndexOf(sideA);
+		int b = s.LastIndexOf(sideB);
+		if (inx == -1 || b == -1) return null;
+		int a = inx + sideA.Length;
+		return s[a..(b-a)];
 	}
 	/*
 	internal static Dictionary<string, LTDefinedFunc> indexDFuncs(LTRuntimeContainer container) {
