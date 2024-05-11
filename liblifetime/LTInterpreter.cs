@@ -17,12 +17,13 @@ public partial class LTInterpreter {
 			if (DebugMode) {
 				Console.WriteLine($"Exec: LINE {i+1}: {line}");
 				Console.WriteLine($"Exec: PARSED: {string.Join(',', ln)}");
+				Console.WriteLine($"Exec: STATE: {container.interpreterState}");
 			}
 
 			switch (container.interpreterState) {
 				case LTInterpreterState.ParsingFunc:
 					if (line == "end") {
-						container.interpreterState = LTInterpreterState.Executing;
+						container.interpreterState = (LTInterpreterState)int.Parse(container.tempValuesForInterpreter["fn_prevstate"]);
 						var (fnArgs, e) = ParseFuncDefArgs(
 							container.tempValuesForInterpreter["fn_args"].Split('\x1'),
 							fileName,
@@ -118,18 +119,22 @@ public partial class LTInterpreter {
 						LogError(new($"Missing function type and/or name", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
-					container.interpreterState = LTInterpreterState.ParsingFunc;
 					Dictionary<string, string> funcProps = new() {
 						{ "fn_type", ln[1] },
 						{ "fn_name", ln[2] },
 						{ "fn_args", ln.Length > 3 ? string.Join('\x01', ln[3..]) : "" },
 						{ "fn_src", "" },
 						{ "fn_defln", line },
-						{ "fn_deflnnum", (i+1).ToString() }
+						{ "fn_deflnnum", (i+1).ToString() },
+						{ "fn_prevstate", ((int)container.interpreterState).ToString() }
 					};
+					container.interpreterState = LTInterpreterState.ParsingFunc;
 					foreach (var (k, v) in funcProps.Select(kvp => (kvp.Key, kvp.Value)))
 						container.tempValuesForInterpreter.Add(k, v);
 					break;
+				//case "if":
+				//
+				//	break;
 				case "namespace":
 					if (ln.Length != 2) {
 						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
@@ -376,6 +381,7 @@ public partial class LTInterpreter {
 	*/
 
 	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
+		c.interpreterState = v ? LTInterpreterState.ExitSuccess : LTInterpreterState.ExitFail;
 		s?.Stop();
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
