@@ -86,6 +86,13 @@ public partial class LTInterpreter {
 			handle.Position = currentPos;
 
 			return (LTVar.SimpleConst("str", "_filecontent", content, "sys", "fl"), null, c);
-		})
+		}),
+		// class: !sys->test
+		new("ret_true", "sys", "test", "str", LTVarAccess.Public, [], false, (c, a) => {
+			return (LTVar.SimpleConst("bool", "_v", "true", "sys", "test"), null, c);
+		}),
+		new("ret_false", "sys", "test", "str", LTVarAccess.Public, [], false, (c, a) => {
+			return (LTVar.SimpleConst("bool", "_v", "false", "sys", "test"), null, c);
+		}),
 	], []);
 }

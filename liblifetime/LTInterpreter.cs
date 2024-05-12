@@ -61,6 +61,14 @@ public partial class LTInterpreter {
 							Console.WriteLine($"Exec: adding {line} to source of dfunc {container.tempValuesForInterpreter["fn_name"]}");
 					}
 					continue;
+				case LTInterpreterState.ParsingIf:
+					if (line == "end") {
+						container.interpreterState = LTInterpreterState.Executing;
+						container.tempValuesForInterpreter.Remove("if_exprres");
+						continue;
+					}
+					else if (container.tempValuesForInterpreter["if_exprres"] == "false") continue;
+					break;
 				default:
 					if (line == "end") {
 						if (!container.tempValuesForInterpreter.Remove("class")) {
@@ -133,12 +141,17 @@ public partial class LTInterpreter {
 						container.tempValuesForInterpreter.Add(k, v);
 					break;
 				case "if":
-					// todo: o pini e ni
 					string expression = Between(line, "if ", " then")?.Trim() ?? "";
 					if (expression.Length == 0) {
 						LogError(new($"Missing if expression", fileName, line, i+1), ref container);
 						return swStop(ref sw, fileName, ref container);
 					}
+					LTRuntimeContainer containerClone = (LTRuntimeContainer)container.Clone();
+					if (!Exec([expression], fileName + " (if expression)", ref containerClone))
+						return swStop(ref sw, fileName, ref container);
+
+					container.tempValuesForInterpreter["if_exprres"] = containerClone.LastReturnedValue?.Value ?? "false";
+					container.interpreterState = LTInterpreterState.ParsingIf;
 					break;
 				case "ret":
 					if (ln.Length < 2)
@@ -389,7 +402,7 @@ public partial class LTInterpreter {
 		int b = s.LastIndexOf(sideB);
 		if (inx == -1 || b == -1) return null;
 		int a = inx + sideA.Length;
-		return s[a..(b-a)];
+		return s[a..b];
 	}
 	/*
 	internal static Dictionary<string, LTDefinedFunc> indexDFuncs(LTRuntimeContainer container) {
