@@ -60,7 +60,7 @@ public class LTDefinedFunc : LTInternalFunc {
 				arg.Name = ignoreArgCount ? arg.Name : acceptedArgs[i].name;
 				container2.Vars.Add((LTVar)arg);
 			}
-			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true);
+			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true, true);
 			container.Output = container2.Output;
 			return (container2.LastReturnedValue, null, container);
 		};

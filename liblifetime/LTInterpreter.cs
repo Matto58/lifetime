@@ -7,9 +7,9 @@ public partial class LTInterpreter {
 	// yes, this variable is readwritable, even by external programs, this is by design
 	public static bool DebugMode = false;
 
-	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false) {
+	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false, bool skipMinification = false) {
 		container.interpreterState = LTInterpreterState.Executing;
-		var s = MinifyCode(source).Select((l, i) => (l, i)).ToArray();
+		var s = (skipMinification ? source : MinifyCode(source)).Select((l, i) => (l, i)).ToArray();
 		Stopwatch? sw = null;
 		if (DebugMode) sw = Stopwatch.StartNew();
 		foreach ((string line, int i) in s) {
@@ -42,9 +42,7 @@ public partial class LTInterpreter {
 							LTVarAccess.Public,
 							fnArgs,
 							false,
-							// whoops! the following line will make the func source code have an extra empty line
-							// (which will get popped by the interpreter anyway when the function gets ran)
-							container.tempValuesForInterpreter["fn_src"].Split('\x1'),
+							container.tempValuesForInterpreter["fn_src"].Split('\x1')[..^1],
 							fileName
 						);
 						container.AppendDFunc(f);

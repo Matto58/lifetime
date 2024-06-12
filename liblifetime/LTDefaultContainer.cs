@@ -87,12 +87,24 @@ public partial class LTInterpreter {
 
 			return (LTVar.SimpleConst("str", "_filecontent", content, "sys", "fl"), null, c);
 		}),
+		new("enum_dir", "sys", "fl", "str_array", LTVarAccess.Public, [("str", "path")], false, (c, a) => {
+			if (!Directory.Exists(a[0].Value))
+				return (null, $"Directory '{a[0].Value}' does not exist", c);
+
+			return (LTVar.SimpleConst("str_array", "_files", string.Join('\x1',
+				Directory.EnumerateFiles(a[0].Value).Select(f => Path.GetFileName(f))
+			), "sys", "fl"), null, c);
+		}),
 		// class: !sys->test
 		new("ret_true", "sys", "test", "str", LTVarAccess.Public, [], false, (c, a) => {
 			return (LTVar.SimpleConst("bool", "_v", "true", "sys", "test"), null, c);
 		}),
 		new("ret_false", "sys", "test", "str", LTVarAccess.Public, [], false, (c, a) => {
 			return (LTVar.SimpleConst("bool", "_v", "false", "sys", "test"), null, c);
+		}),
+		new("print_line_arr", "sys", "test", "str", LTVarAccess.Public, [("str_array", "arr")], false, (c, a) => {
+			a[0].Value.Split('\x1').ToList().ForEach(a => LogMsg(a, ref c, true));
+			return (null, null, c);
 		}),
 	], []);
 }
