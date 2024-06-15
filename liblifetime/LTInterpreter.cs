@@ -31,7 +31,7 @@ public partial class LTInterpreter {
 							int.Parse(container.tempValuesForInterpreter["fn_deflnnum"]));
 						if (e != null) {
 							LogError(e, ref container);
-							return swStop(ref sw, fileName, ref container);
+							if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 						}
 
 						LTDefinedFunc f = new(
@@ -71,7 +71,7 @@ public partial class LTInterpreter {
 					if (line == "end") {
 						if (!container.tempValuesForInterpreter.Remove("class")) {
 							LogError(new($"Unexpected end keyword", fileName, line, i+1), ref container);
-							return swStop(ref sw, fileName, ref container);	
+							if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);	
 						} else continue;
 					}
 					break;
@@ -86,7 +86,7 @@ public partial class LTInterpreter {
 							LogError(e, ref container);
 						container.interpreterState = LTInterpreterState.ExitFail;
 						container.nestedFuncExitedFine = false;
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					continue;
 			}
@@ -95,23 +95,23 @@ public partial class LTInterpreter {
 				case "let":
 					if (ln.Length < 3) {
 						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					// dumb hack numero dos
 					string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
 					string ns = container._namespace;
 					if (container.Vars.Where(v => v.Namespace == ns && v.Class == c).Select(v => v.Name).Contains(ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					var (val, e) = ParseFuncArgs(ln[3..], fileName, line, i+1, ref container);
 					if (e != null) {
 						LogError(e, ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					if (val.Count != 1) {
 						LogError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					val[0].Constant = false;
 					val[0].Name = ln[2];
@@ -123,7 +123,7 @@ public partial class LTInterpreter {
 				case "fn":
 					if (ln.Length < 3) {
 						LogError(new($"Missing function type and/or name", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					Dictionary<string, string> funcProps = new() {
 						{ "fn_type", ln[1] },
@@ -142,11 +142,11 @@ public partial class LTInterpreter {
 					string expression = Between(line, "if ", " then")?.Trim() ?? "";
 					if (expression.Length == 0) {
 						LogError(new($"Missing if expression", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					LTRuntimeContainer containerClone = (LTRuntimeContainer)container.Clone();
 					if (!Exec([expression], fileName + " (if expression)", ref containerClone))
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 
 					container.tempValuesForInterpreter["if_exprres"] = containerClone.LastReturnedValue?.Value ?? "false";
 					container.interpreterState = LTInterpreterState.ParsingIf;
@@ -156,21 +156,21 @@ public partial class LTInterpreter {
 						return swStop(ref sw, fileName, ref container, true);
 
 					(var vals, e) = ParseFuncArgs(ln[1..], fileName, line, i+1, ref container);
-					if (e != null) return swStop(ref sw, fileName, ref container);
+					if (e != null && !container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					if (vals.Count != 1) {
 						LogError(new("Too many returned values, only one can be returned", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					container.LastReturnedValue = vals[0];
 					return swStop(ref sw, fileName, ref container, true);
 				case "namespace":
 					if (ln.Length != 2) {
 						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					if (container._namespace != "") {
 						LogError(new("Namespace already specified", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					container._namespace = ln[1];
 					if (DebugMode) Console.WriteLine($"Exec: container namespace is now {container._namespace}");
@@ -178,13 +178,14 @@ public partial class LTInterpreter {
 				case "class":
 					if (ln.Length != 2) {
 						LogError(new(ln.Length < 2 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
-						return swStop(ref sw, fileName, ref container);
+						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					container.tempValuesForInterpreter.Add("class", ln[1]);
 					break;
 				default:
 					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
-					return swStop(ref sw, fileName, ref container);
+					if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+					break;
 			}
 		}
 		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
