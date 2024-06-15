@@ -305,14 +305,17 @@ public partial class LTInterpreter {
 	public static (List<LTVar> Vars, LTError? Error) ParseFuncArgs(string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {
 		List<LTVar> parsed = [];
 		bool doingString = false;
+		bool terminatedStrProperly = false;
 		foreach ((string arg, int i) in args.Select((a, b) => (a, b))) {
 			if (DebugMode) Console.WriteLine("ParseFuncArgs: parsing " + arg);
 			if (arg[0] == '"' && !doingString) {
 				doingString = true;
+				terminatedStrProperly = false;
 				string s = "";
 				if (arg[^1] == '"') {
 					s = arg[1..^1];
 					doingString = false;
+					terminatedStrProperly = true;
 				}
 				else s = arg.Length > 1 ? arg[1..] : "";
 				parsed.Add(LTVar.SimpleMut("str", "arg" + parsed.Count, s, container.Namespace, container.Class));
@@ -357,6 +360,7 @@ public partial class LTInterpreter {
 				if (arg[^1] == '"') {
 					parsed[^1].Value += " " + arg[..^1];
 					doingString = false;
+					terminatedStrProperly = true;
 				}
 				else parsed[^1].Value += " " + arg;
 			else if (int.TryParse(arg, out int n))
@@ -367,6 +371,10 @@ public partial class LTInterpreter {
 				LogWarning($"Unable to parse {arg} as a str, returning it as an obj", ref container);
 				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg, container.Namespace, container.Class));
 			}
+		}
+			
+		if (parsed.Count != 0 && !terminatedStrProperly && parsed[^1].Type == "str") {
+			return (parsed, new("Unterminated string", file, line, lineNum));
 		}
 		if (DebugMode) Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
 		return (parsed, null);
