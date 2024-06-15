@@ -1,1 +1,2 @@
-- [ ] actually make this file lmao
+- [ ] stack trace
+- [ ] step-by-step debugger connectivity thingymajig
