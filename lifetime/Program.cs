@@ -17,6 +17,10 @@ class Program {
 		};
 		LTInterpreter.DebugMode = args.Contains("-d") || Debugger.IsAttached;
 		rtContainer.IgnoreErrs = args.Contains("-ie");
+		if (args.Contains("-v")) {
+			Console.WriteLine(LTInfo.Version);
+			return 0;
+		}
 		if (args.Contains("-i")) {
 			Console.WriteLine(
 				$"Lifetime {LTInfo.Version} ({LTInfo.DevYears}) - {LTInfo.RepoUrl}\n" +
@@ -33,6 +37,7 @@ class Program {
 					"SWITCHES:\n" +
 					"\t-d\tdebug mode (use only if you are willing to read a lot of spaghetti)\n" +
 					"\t-i\tshows info about Lifetime at the start of the program\n" +
+					"\t-v\tshows Lifetime version and exits\n" +
 					"\t-ie\tmakes errors not exit the program");
 				break;
 			case "run":
