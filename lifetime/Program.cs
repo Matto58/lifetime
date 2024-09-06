@@ -4,7 +4,7 @@ namespace Mattodev.Lifetime.CmdLineTool;
 
 class Program {
 	public static int Main(string[] args) {
-		LTRuntimeContainer rtContainer = LTInterpreter.DefaultContainer;
+		LTRuntimeContainer rtContainer = LTInterpreter.DefaultContainer();
 		rtContainer.InputHandler += q => {
 			Console.Write(q);
 			return Console.ReadLine() ?? "";

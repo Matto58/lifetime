@@ -1,6 +1,6 @@
 namespace Mattodev.Lifetime;
 public partial class LTInterpreter {
-	public static readonly LTRuntimeContainer DefaultContainer = LTRuntimeContainer.Create([
+	public static LTRuntimeContainer DefaultContainer() => LTRuntimeContainer.Create([
 		// class: !sys->io
 		new("print", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
 			a.ToList().ForEach(a => LogMsg(a.Value, ref c));
