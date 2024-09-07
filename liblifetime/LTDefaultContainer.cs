@@ -106,5 +106,9 @@ public partial class LTInterpreter {
 			a[0].Value.Split('\x1').ToList().ForEach(a => LogMsg(a, ref c, true));
 			return (null, null, c);
 		}),
+		// class: !sys->rt
+		new("lt_ver", "sys", "rt", "str", LTVarAccess.Public, [], false, (c, a) => {
+			return (LTVar.SimpleConst("str", "_ver", LTInfo.Version, "sys", "rt"), null, c);
+		}),
 	], []);
 }
