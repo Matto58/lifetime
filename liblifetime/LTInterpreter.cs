@@ -337,6 +337,7 @@ public partial class LTInterpreter {
 					var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns && v.Class == c);
 					if (v.Any()) {
 						parsed.Add(v.First());
+						terminatedStrProperly = true;
 						continue;
 					}
 					return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
@@ -345,7 +346,10 @@ public partial class LTInterpreter {
 				if (s2.Length > 2) return ([], new($"Invalid variable identifier: {arg}", file, line, lineNum));
 
 				var v2 = container.Vars.Where(v => v.Name == s1[1] && v.Namespace == s2[0] && v.Class == s2[1]);
-				if (v2.Any()) parsed.Add(v2.First());
+				if (v2.Any()) {
+					parsed.Add(v2.First());
+					terminatedStrProperly = true;
+				}
 				else return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
 				continue;
 			}
