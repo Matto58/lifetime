@@ -3,11 +3,11 @@ public partial class LTInterpreter {
 	public static LTRuntimeContainer DefaultContainer() => LTRuntimeContainer.Create([
 		// class: !sys->io
 		new("print", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
-			a.ToList().ForEach(a => LogMsg(a.Value, ref c));
+			a.ForEach(a => LogMsg(a.Value, ref c));
 			return (null, null, c);
 		}),
 		new("print_line", "sys", "io", "obj", LTVarAccess.Public, [], true, (c, a) => {
-			a.ToList().ForEach(a => LogMsg(a.Value, ref c, true));
+			a.ForEach(a => LogMsg(a.Value, ref c, true));
 			return (null, null, c);
 		}),
 		new("read_line", "sys", "io", "str", LTVarAccess.Public, [("str", "question")], false, (c, a) =>

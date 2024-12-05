@@ -4,7 +4,7 @@ public class LTRuntimeContainer : ICloneable {
 	public string Output;
 	public Func<string, string> InputHandler;
 	public Action<string> OutputHandler, ErrOutputHandler;
-	public List<LTVar> Vars;
+	public LTVarCollection Vars;
 	public Dictionary<string, LTDefinedFunc> DFuncs;
 	public Dictionary<string, LTInternalFunc> IFuncs;
 	public List<FileStream?> Handles;

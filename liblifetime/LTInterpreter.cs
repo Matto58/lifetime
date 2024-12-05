@@ -100,7 +100,7 @@ public partial class LTInterpreter {
 					// dumb hack numero dos
 					string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
 					string ns = container._namespace;
-					if (container.Vars.Where(v => v.Namespace == ns && v.Class == c).Select(v => v.Name).Contains(ln[2])) {
+					if (container.Vars.Contains(ns, c, ln[2])) {
 						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
 						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
@@ -299,7 +299,7 @@ public partial class LTInterpreter {
 		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
 			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 
-		var (v, e2) = func.Call(ref container, [.. args2]);
+		var (v, e2) = func.Call(ref container, new(args2));
 		container.LastReturnedValue = v;
 		return e2 != null ? new(e2, file, line, lineNum) : null;
 	}
@@ -334,9 +334,8 @@ public partial class LTInterpreter {
 
 				string[] s1 = s0.Split("::");
 				if (s1.Length != 2) {
-					var v = container.Vars.Where(v => v.Name == arg[1..] && v.Namespace == ns && v.Class == c);
-					if (v.Any()) {
-						parsed.Add(v.First());
+					if (container.Vars.TryGetValue(ns, c, arg[1..], out var v)) {
+						parsed.Add(v);
 						terminatedStrProperly = true;
 						continue;
 					}
@@ -345,9 +344,8 @@ public partial class LTInterpreter {
 				string[] s2 = s1[0].Split("->");
 				if (s2.Length > 2) return ([], new($"Invalid variable identifier: {arg}", file, line, lineNum));
 
-				var v2 = container.Vars.Where(v => v.Name == s1[1] && v.Namespace == s2[0] && v.Class == s2[1]);
-				if (v2.Any()) {
-					parsed.Add(v2.First());
+				if (container.Vars.TryGetValue(ns, c, arg[1..], out var v2)) {
+					parsed.Add(v2);
 					terminatedStrProperly = true;
 				}
 				else return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));

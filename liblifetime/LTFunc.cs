@@ -3,11 +3,11 @@ namespace Mattodev.Lifetime;
 public interface ILifetimeFunc : ILifetimeVar {
 	public int AcceptsArgs { get; }
 	public bool IgnoreArgCount { get; set; }
-	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams);
+	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams);
 }
 public class LTInternalFunc(
 	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
-	Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> executedFunction
+	Func<LTRuntimeContainer, LTVarCollection, (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> executedFunction
 ) : ILifetimeFunc {
 	public string Name { get; set; } = name;
 	public string Namespace { get; set; } = funcNamespace;
@@ -24,14 +24,14 @@ public class LTInternalFunc(
 	bool ILifetimeVar.Constant { get => Constant; set => Constant = value; }
 	bool ILifetimeVar.IsNull { get => IsNull; set => IsNull = value; }
 
-	internal Func<LTRuntimeContainer, ILifetimeVar[], (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> execedFunc
+	internal Func<LTRuntimeContainer, LTVarCollection, (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> execedFunc
 		= executedFunction;
 
 	public LTInternalFunc(
 		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount
 	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, (c, _) => (null, null, c)) {}
 
-	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, ILifetimeVar[] funcParams) {
+	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams) {
 		var (ret, err, container) = execedFunc((LTRuntimeContainer)runtimeContainer.Clone(), funcParams);
 		runtimeContainer.Output = container.Output;
 		return (ret, err);
@@ -52,13 +52,14 @@ public class LTDefinedFunc : LTInternalFunc {
 			LTRuntimeContainer container2 = (LTRuntimeContainer)container.Clone();
 			container2._namespace = funcNamespace;
 			container2.tempValuesForInterpreter["class"] = funcClass;
-			foreach ((ILifetimeVar arg, int i) in args.Select((a, i) => (a, i))) {
+			for (int i = 0; i < args.Count; i++) {
+				var arg = args[i];
 				if (!ignoreArgCount && arg.Type != acceptedArgs[i].type)
 					return (null, $"Type mismatch for argument {acceptedArgs[i].name} (expecting {acceptedArgs[i].type}, got {arg.Type})", container);
 				arg.Namespace = funcNamespace;
 				arg.Class = funcClass;
 				arg.Name = ignoreArgCount ? arg.Name : acceptedArgs[i].name;
-				container2.Vars.Add((LTVar)arg);
+				container2.Vars.Add(arg);
 			}
 			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true, true);
 			container.Output = container2.Output;

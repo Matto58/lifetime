@@ -24,7 +24,7 @@ class Program {
 		if (args.Contains("-i")) {
 			Console.WriteLine(
 				$"Lifetime {LTInfo.Version} ({LTInfo.DevYears}) - {LTInfo.RepoUrl}\n" +
-				$"Licensed under CC BY-SA 4.0: https://creativecommons.org/licenses/by-sa/4.0");
+				$"Licensed under the MIT license.");
 		}
 
 		switch (args.Length < 1 ? "help" : args[0]) {
