@@ -146,7 +146,7 @@ public class LTVarCollection : IDictionary<string, LTVar>, IList<LTVar> {
 		value = vars[index];
 		return true;
 	}
-	public bool TryGetValue(string @namespace, string @class, string name [MaybeNullWhen(false)] out LTVar value)
+	public bool TryGetValue(string @namespace, string @class, string name, [MaybeNullWhen(false)] out LTVar value)
 		=> TryGetValue($"${@namespace}::{@class}->{name}", out value);
 
 	// implementations of some linq functions
