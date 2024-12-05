@@ -9,6 +9,7 @@ public partial class LTInterpreter {
 
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false, bool skipMinification = false) {
 		container.interpreterState = LTInterpreterState.Executing;
+		if (!nested) container.nestedFuncExitedFine = true;
 		var s = (skipMinification ? source : MinifyCode(source)).Select((l, i) => (l, i)).ToArray();
 		Stopwatch? sw = null;
 		if (DebugMode) sw = Stopwatch.StartNew();
