@@ -83,7 +83,7 @@ public partial class LTInterpreter {
 					var e = FindAndExecFunc(ln[0][1..], ln.Length > 1 ? ln[1..] : [], fileName, line, i+1, ref container);
 					if (e != null) {
 						// LogError shouldnt run if a function that ran within this one exited with an error and already logged it
-						if (!container.nestedFuncExitedFine)
+						if (container.nestedFuncExitedFine)
 							LogError(e, ref container);
 						container.interpreterState = LTInterpreterState.ExitFail;
 						container.nestedFuncExitedFine = false;
