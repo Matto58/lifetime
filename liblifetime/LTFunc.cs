@@ -3,6 +3,7 @@ namespace Mattodev.Lifetime;
 public interface ILifetimeFunc : ILifetimeVar {
 	public int AcceptsArgs { get; }
 	public bool IgnoreArgCount { get; set; }
+	public (string type, string name)[] AcceptedArgs { get; init; }
 	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams);
 }
 public class LTInternalFunc(

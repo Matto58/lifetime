@@ -297,8 +297,11 @@ public partial class LTInterpreter {
 		var (args2, e) = ParseFuncArgs(args, file, line, lineNum, ref container);
 		if (e != null)
 			return e;
-		if (func.AcceptsArgs != args2.Count && !func.IgnoreArgCount)
-			return new($"Incorrect amount of args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
+		if (func.AcceptsArgs < args2.Count && !func.IgnoreArgCount)
+			return new($"Too many args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
+		// fill nongiven args with null: breaking change!
+		for (int i = args2.Count; i < func.AcceptsArgs; i++)
+			args2.Add(LTVar.SimpleConst(func.AcceptedArgs[i].type, "_arg" + i, null, container.Namespace, container.Class));
 
 		var (v, e2) = func.Call(ref container, new(args2));
 		container.LastReturnedValue = v;
