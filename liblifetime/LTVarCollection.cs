@@ -39,8 +39,14 @@ public class LTVarCollection : IDictionary<string, LTVar>, IList<LTVar> {
 		this[key] = value;
 	}
 	public void Add(KeyValuePair<string, LTVar> item) => Add(item.Key, item.Value);
+	public void Add(LTVar item) => Add($"${item.Namespace}::{item.Class}->{item.Name}", item);
 
-	public void Add(LTVar item) => Add($"${item.Namespace}::{item.Class}->{item.Value}", item);
+	public void AddRange(IEnumerable<KeyValuePair<string, LTVar>> items) {
+		foreach (var p in items) Add(p);
+	}
+	public void AddRange(IEnumerable<LTVar> items) {
+		foreach (var v in items) Add(v);
+	}
 
 	public void Clear() {
 		nameMap.Clear();
