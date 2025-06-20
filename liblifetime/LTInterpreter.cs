@@ -456,6 +456,10 @@ public partial class LTInterpreter {
 			Console.WriteLine("swStop: now vars:");
 			c.Vars
 				.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.Value}"));
+			
+			Console.WriteLine("swStop: now interpreter state stack:");
+			c.interpreterStateStack
+				.ForEach(s => Console.WriteLine($"\t{s}"));
 
 			Console.WriteLine("swStop: binded namespaces: " + string.Join(", ", c.bindedNamespaces));
 		}
