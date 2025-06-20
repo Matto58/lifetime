@@ -10,7 +10,8 @@ public class LTRuntimeContainer : ICloneable {
 	public List<FileStream?> Handles;
 	public LTVar? LastReturnedValue;
 	internal List<string> bindedNamespaces = [];
-	internal LTInterpreterState interpreterState = LTInterpreterState.Idle;
+	internal LTInterpreterState interpreterState => interpreterStateStack.Count > 0 ? interpreterStateStack[^1] : LTInterpreterState.Idle;
+	internal List<LTInterpreterState> interpreterStateStack = [LTInterpreterState.Idle];
 	internal bool nestedFuncExitedFine = true;
 	public bool IgnoreErrs = false;
 	internal Dictionary<string, string> tempValuesForInterpreter = [];

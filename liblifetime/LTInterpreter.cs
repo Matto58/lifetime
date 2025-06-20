@@ -2,13 +2,13 @@ using System.Diagnostics;
 
 namespace Mattodev.Lifetime;
 
-public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc }
+public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc, ParsingClass }
 public partial class LTInterpreter {
 	// yes, this variable is readwritable, even by external programs, this is by design
 	public static bool DebugMode = false;
 
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false, bool skipMinification = false) {
-		container.interpreterState = LTInterpreterState.Executing;
+		container.interpreterStateStack.Add(LTInterpreterState.Executing);
 		if (!nested) container.nestedFuncExitedFine = true;
 		var s = (skipMinification ? source : MinifyCode(source)).Select((l, i) => (l, i)).ToArray();
 		Stopwatch? sw = null;
@@ -24,7 +24,7 @@ public partial class LTInterpreter {
 			switch (container.interpreterState) {
 				case LTInterpreterState.ParsingFunc:
 					if (line == "end") {
-						container.interpreterState = (LTInterpreterState)int.Parse(container.tempValuesForInterpreter["fn_prevstate"]);
+						container.interpreterStateStack.RemoveAt(container.interpreterStateStack.Count - 1);
 						var (fnArgs, e) = ParseFuncDefArgs(
 							container.tempValuesForInterpreter["fn_args"].Split('\x1'),
 							fileName,
@@ -62,7 +62,7 @@ public partial class LTInterpreter {
 					continue;
 				case LTInterpreterState.ParsingIf:
 					if (line == "end") {
-						container.interpreterState = LTInterpreterState.Executing;
+						container.interpreterStateStack.RemoveAt(container.interpreterStateStack.Count - 1);
 						container.tempValuesForInterpreter.Remove("if_exprres");
 						continue;
 					}
@@ -85,7 +85,7 @@ public partial class LTInterpreter {
 						// LogError shouldnt run if a function that ran within this one exited with an error and already logged it
 						if (container.nestedFuncExitedFine)
 							LogError(e, ref container);
-						container.interpreterState = LTInterpreterState.ExitFail;
+						container.interpreterStateStack.Add(LTInterpreterState.ExitFail);
 						container.nestedFuncExitedFine = false;
 						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
@@ -136,7 +136,7 @@ public partial class LTInterpreter {
 						{ "fn_deflnnum", (i+1).ToString() },
 						{ "fn_prevstate", ((int)container.interpreterState).ToString() }
 					};
-					container.interpreterState = LTInterpreterState.ParsingFunc;
+					container.interpreterStateStack.Add(LTInterpreterState.ParsingFunc);
 					foreach (var (k, v) in funcProps.Select(kvp => (kvp.Key, kvp.Value)))
 						container.tempValuesForInterpreter.Add(k, v);
 					break;
@@ -151,7 +151,7 @@ public partial class LTInterpreter {
 						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 
 					container.tempValuesForInterpreter["if_exprres"] = containerClone.LastReturnedValue?.Value ?? "false";
-					container.interpreterState = LTInterpreterState.ParsingIf;
+					container.interpreterStateStack.Add(LTInterpreterState.ParsingIf);
 					break;
 				case "ret":
 					if (ln.Length < 2)
@@ -178,8 +178,8 @@ public partial class LTInterpreter {
 					if (DebugMode) Console.WriteLine($"Exec: container namespace is now {container._namespace}");
 					break;
 				case "class":
-					if (ln.Length != 2) {
-						LogError(new(ln.Length < 2 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
+					if (ln.Length != 3) {
+						LogError(new(ln.Length < 3 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
 						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					}
 					container.tempValuesForInterpreter.Add("class", ln[1]);
@@ -190,7 +190,7 @@ public partial class LTInterpreter {
 					break;
 			}
 		}
-		if (!nested) container.interpreterState = LTInterpreterState.ExitSuccess;
+		if (!nested) container.interpreterStateStack.Add(LTInterpreterState.ExitSuccess);
 		return swStop(ref sw, fileName, ref container, true);
 	}
 
@@ -437,7 +437,7 @@ public partial class LTInterpreter {
 	*/
 
 	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
-		c.interpreterState = v ? LTInterpreterState.ExitSuccess : LTInterpreterState.ExitFail;
+		c.interpreterStateStack.Add(v ? LTInterpreterState.ExitSuccess : LTInterpreterState.ExitFail);
 		s?.Stop();
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
