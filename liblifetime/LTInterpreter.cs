@@ -120,6 +120,7 @@ public partial class LTInterpreter {
 					val[0].Namespace = container.Namespace;
 					val[0].Class = container.Class;
 					container.Vars.Add(val[0]);
+					if (val[0].OnValueSet != null) val[0].OnValueSet();
 					break;
 				case "fn":
 					if (ln.Length < 3) {
@@ -340,6 +341,7 @@ public partial class LTInterpreter {
 				if (s1.Length != 2) {
 					if (container.Vars.TryGetValue(ns, c, arg[1..], out var v)) {
 						parsed.Add(v);
+						v.OnValueGet?.Invoke();
 						terminatedStrProperly = true;
 						continue;
 					}
@@ -353,6 +355,7 @@ public partial class LTInterpreter {
 					terminatedStrProperly = true;
 				}
 				else return ([], new($"Referenced variable not found: {arg}", file, line, lineNum));
+				v2.OnValueGet?.Invoke();
 				continue;
 			}
 			else if (arg[0] == '!') {

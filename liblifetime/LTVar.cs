@@ -10,6 +10,8 @@ public interface ILifetimeVar : ICloneable {
 	public bool Constant { get; set; }
 	public bool IsNull { get; set; }
 	public LTVarAccess Access { get; init; }
+	public Action? OnValueGet { get; set; }
+	public Action? OnValueSet { get; set; }
 }
 
 public class LTVar(string name, string varNamespace, string varClass, string varType, string? varValue, bool isConstant, LTVarAccess access) : ILifetimeVar {
@@ -21,6 +23,8 @@ public class LTVar(string name, string varNamespace, string varClass, string var
 	public bool Constant { get; set; } = isConstant;
 	public bool IsNull { get; set; } = varValue is null;
 	public LTVarAccess Access { get; init; } = access;
+	public Action? OnValueGet { get; set; } = null;
+	public Action? OnValueSet { get; set; } = null;
 
 	public static LTVar SimpleConst(string type, string name, string? value, string _namespace, string _class)
 		=> new(name, _namespace, _class, type, value, true, LTVarAccess.Public);

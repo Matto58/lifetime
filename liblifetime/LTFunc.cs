@@ -24,6 +24,8 @@ public class LTInternalFunc(
 	string ILifetimeVar.Value { get => Value; set => Value = value; }
 	bool ILifetimeVar.Constant { get => Constant; set => Constant = value; }
 	bool ILifetimeVar.IsNull { get => IsNull; set => IsNull = value; }
+	public Action? OnValueGet { get; set; } = null;
+	public Action? OnValueSet { get; set; } = null;
 
 	internal Func<LTRuntimeContainer, LTVarCollection, (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> execedFunc
 		= executedFunction;
