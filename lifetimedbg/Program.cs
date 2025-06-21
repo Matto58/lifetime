@@ -1,0 +1,114 @@
+namespace Mattodev.Lifetime.CmdLineDebugger;
+
+class Program {
+	public static int Main(string[] args) {
+		Console.ForegroundColor = ConsoleColor.White;
+		Console.WriteLine($"The Lifetime Debugger (Lifetime version {LTInfo.Version})");
+
+		Console.WriteLine("Initializing container");
+		LTRuntimeContainer rtContainer = LTInterpreter.DefaultContainer();
+	
+		Console.Write("Enable verbose mode (LTInterpreter.DebugMode)? [y/N]");
+		var verbose = Console.ReadKey();
+		LTInterpreter.DebugMode = verbose.Key == ConsoleKey.Y;
+		Console.WriteLine();
+
+		string[] src = [];
+		string filename = "";
+
+		Console.WriteLine("Creating handlers");
+		rtContainer.InputHandler += q => {
+			Console.Write(q);
+			return Console.ReadLine() ?? "";
+		};
+		rtContainer.OutputHandler += Console.Write;
+		rtContainer.ErrOutputHandler += msg => {
+			ConsoleColor old = Console.ForegroundColor;
+			Console.ForegroundColor = ConsoleColor.Red;
+			Console.Write(msg);
+			Console.ForegroundColor = old;
+		};
+
+		bool running = true, debugActive = false;
+		while (running) {
+			Console.ForegroundColor = ConsoleColor.Gray;
+			Console.Write("dbg > ");
+			Console.ForegroundColor = ConsoleColor.Cyan;
+			string? cmd = Console.ReadLine();
+			Console.ForegroundColor = ConsoleColor.White;
+			if (cmd == null) {
+				rtContainer.ErrOutputHandler("ERROR: stdin is not available!\n");
+				Console.ResetColor();
+				return 1;
+			}
+			string[] ln = cmd.Split(' ');
+
+			switch (ln[0]) {
+				case "?": {
+					Console.WriteLine(
+						"? show help\n" +
+						"q quit debugger\n" +
+						"b <to be implemented> [line] set breakpoint\n" +
+						"r run file/continue execution\n" +
+						"s <to be implemented> step on the next line\n" +
+						"o [filename] open file\n" +
+						"l list minified source code");
+					break;
+				}
+				case "q": {
+					if (debugActive) {
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.Write("ARE YOU SURE? Debugging is still in progress. [y/N]");
+						var conf = Console.ReadKey();
+						Console.ForegroundColor = ConsoleColor.White;
+						if (conf.Key != ConsoleKey.Y) break;
+					}
+					debugActive = false;
+					running = false;
+					break;
+				}
+				case "o": {
+					if (ln.Length < 2) {
+						Console.ForegroundColor = ConsoleColor.Yellow;
+						Console.WriteLine("Filename not specified.");
+						Console.ForegroundColor = ConsoleColor.White;
+						break;
+					}
+					Console.WriteLine("Reading...");
+					filename = cmd[2..];
+					var ogSrc = File.ReadAllLines(filename);
+					Console.WriteLine("Minifying...");
+					src = LTInterpreter.MinifyCode(ogSrc);
+
+					Console.ForegroundColor = ConsoleColor.Green;
+					Console.WriteLine("Done. Ready to execute.");
+					Console.ForegroundColor = ConsoleColor.White;
+					break;
+				}
+				case "r": {
+					debugActive = true;
+					bool result = LTInterpreter.Exec(src, filename, ref rtContainer, skipMinification: true);
+					debugActive = false;
+					Console.ForegroundColor = ConsoleColor.DarkCyan;
+					Console.WriteLine(result ? "Execution successful." : "Execution failed!");
+					break;
+				}
+				case "l": {
+					if (filename == "")
+						Console.WriteLine("No file loaded.");
+					else
+						Console.WriteLine(string.Join('\n', src.Select((s, i) => $"{i+1}:\t{s}"))); // this is terrifying
+					break;
+				}
+				default: {
+					Console.ForegroundColor = ConsoleColor.Yellow;
+					Console.WriteLine("Unknown command.");
+					Console.ForegroundColor = ConsoleColor.White;
+					break;
+				}
+			}
+		}
+		Console.ResetColor();
+		return 0;
+	}
+}

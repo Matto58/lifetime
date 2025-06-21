@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lifetime", "lifetime\lifeti
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "liblifetime", "liblifetime\liblifetime.csproj", "{955D2237-BB0A-494C-B736-20F09664B1D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lifetimedbg", "lifetimedbg\lifetimedbg.csproj", "{27C3117B-7051-4F5E-8A3C-3E9CA4736F43}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{955D2237-BB0A-494C-B736-20F09664B1D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{955D2237-BB0A-494C-B736-20F09664B1D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{955D2237-BB0A-494C-B736-20F09664B1D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27C3117B-7051-4F5E-8A3C-3E9CA4736F43}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27C3117B-7051-4F5E-8A3C-3E9CA4736F43}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27C3117B-7051-4F5E-8A3C-3E9CA4736F43}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27C3117B-7051-4F5E-8A3C-3E9CA4736F43}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
