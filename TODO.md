@@ -2,4 +2,4 @@
 - [ ] step-by-step debugger connectivity thingymajig
 - [ ] syntax.md file
 - [ ] docs.md file
-- [ ] embed.md file
+- [x] embed.md file

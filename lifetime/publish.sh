@@ -13,6 +13,7 @@ do
     for os in ${oses[@]}
     do
         dotnet publish -c Release --os $os -a $arch
+        cp ../embed.md ../LICENSE ../TODO.md ./bin/Release/net8.0/$os-$arch/publish
         7z a -y lifetime-$v-$os-$arch.zip ./bin/Release/net8.0/$os-$arch/publish/*
     done
 done

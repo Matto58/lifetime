@@ -15,7 +15,7 @@
     ```
 
 ### Method 2: Included project approach
-> **NOTE:** The .NET 8.0 SDK is required for this step. You can also modify the csproj to use your version of the SDK, but lowering the version will require refactoring the code to work in that version of .NET.
+> **NOTE:** The .NET 8.0 SDK is required for this method. You can also modify the csproj to use your version of the SDK, but lowering the version will require refactoring the code to work in that version of .NET.
 1. Download the source code of the version of your choice from the release tab, or clone the GitHub repo
 2. Copy the liblifetime folder into your solution directory
 3. Add the project into your solution and include it in your project:
