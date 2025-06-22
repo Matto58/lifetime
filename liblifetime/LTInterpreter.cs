@@ -184,6 +184,19 @@ public partial class LTInterpreter {
 					}
 					container.tempValuesForInterpreter.Add("class", ln[1]);
 					break;
+				case "throw":
+					LTError throwed;
+					if (ln.Length < 2)
+						throwed = new("(no message specified)", fileName, line, i+1);
+					else {
+						(var varList, var err) = ParseFuncArgs(ln[1..], fileName, line, i+1, ref container);
+						if (err != null) throwed = err;
+						else if (varList == null) throw new Exception("varList should not be null here (please file an issue on the github)");
+						else throwed = new(string.Join("", varList.Select(v => v.Value)), fileName, line, i+1);
+					}
+					LogError(throwed, ref container);
+					if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+					break;
 				default:
 					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
 					if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);

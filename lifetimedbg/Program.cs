@@ -21,7 +21,12 @@ class Program {
 			Console.Write(q);
 			return Console.ReadLine() ?? "";
 		};
-		rtContainer.OutputHandler += Console.Write;
+		rtContainer.OutputHandler += msg => {
+			ConsoleColor old = Console.ForegroundColor;
+			Console.ForegroundColor = ConsoleColor.White;
+			Console.Write(msg);
+			Console.ForegroundColor = old;
+		};
 		rtContainer.ErrOutputHandler += msg => {
 			ConsoleColor old = Console.ForegroundColor;
 			Console.ForegroundColor = ConsoleColor.Red;
@@ -87,6 +92,7 @@ class Program {
 				}
 				case "r": {
 					debugActive = true;
+					Console.ForegroundColor = ConsoleColor.DarkGray;
 					bool result = LTInterpreter.Exec(src, filename, ref rtContainer, skipMinification: true);
 					debugActive = false;
 					Console.ForegroundColor = ConsoleColor.DarkCyan;
