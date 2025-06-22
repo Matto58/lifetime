@@ -9,3 +9,8 @@ that name sound familiar to you? If so, excellent; the name comes from the
 first track on Spirit Phone, Lifetime Achievement Award, I wanted to name this
 language H or H# but the extensions .h and .hs are taken by C headers and
 Haskell respectively.
+
+For more info on how to work with this language:
+  - For documentation, docs.md
+  - For how to embed Lifetime into your program, embed.md
+  - For the Lifetime syntax, syntax.md

@@ -30,10 +30,9 @@ public partial class LTInterpreter {
 							fileName,
 							container.tempValuesForInterpreter["fn_defln"],
 							int.Parse(container.tempValuesForInterpreter["fn_deflnnum"]));
-						if (e != null) {
-							LogError(e, ref container);
-							if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
-						}
+
+						if (e != null && !ThrowError(e, ref container, fileName, ref sw))
+							return false;
 
 						LTDefinedFunc f = new(
 							container.tempValuesForInterpreter["fn_name"],
@@ -70,12 +69,23 @@ public partial class LTInterpreter {
 					break;
 				default:
 					if (line == "end") {
-						if (!container.tempValuesForInterpreter.Remove("class")) {
-							LogError(new($"Unexpected end keyword", fileName, line, i+1), ref container);
-							if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);	
+						if (container.tryingForError) {
+							container.tryingForError = false;
+							continue;
+						}
+						else if (!container.tempValuesForInterpreter.Remove("class")) {
+							if (!ThrowError(new($"Unexpected end keyword", fileName, line, i+1), ref container, fileName, ref sw))
+								return false;
 						} else continue;
 					}
 					break;
+			}
+
+			// ofc when an error is caught, the rest of the try statement shouldn't be executed
+			if (container.tryingForError && container.caughtError != null) {
+				if (DebugMode)
+					Console.WriteLine("Exec: SKIPPING this line because an error has been caught within this try statement");
+				continue;
 			}
 
 			switch (ln[0][0]) {
@@ -95,24 +105,22 @@ public partial class LTInterpreter {
 				// variable definition: let <type> <variable name> <value>
 				case "let":
 					if (ln.Length < 3) {
-						LogError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new("Missing variable type, name and/or value", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					// dumb hack numero dos
 					string c = container.tempValuesForInterpreter.GetValueOrDefault("class", "");
 					string ns = container._namespace;
 					if (container.Vars.Contains(ns, c, ln[2])) {
-						LogError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new($"Invalid variable redefinition (try doing ${ln[2]} <- {string.Join(' ', ln[3..])})", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					var (val, e) = ParseFuncArgs(ln[3..], fileName, line, i+1, ref container);
-					if (e != null) {
-						LogError(e, ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
-					}
+					if (e != null && !ThrowError(e, ref container, fileName, ref sw))
+						return false;
 					if (val.Count != 1) {
-						LogError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					val[0].Constant = false;
 					val[0].Name = ln[2];
@@ -124,8 +132,8 @@ public partial class LTInterpreter {
 					break;
 				case "fn":
 					if (ln.Length < 3) {
-						LogError(new($"Missing function type and/or name", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new("Missing function type and/or name", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					Dictionary<string, string> funcProps = new() {
 						{ "fn_type", ln[1] },
@@ -143,8 +151,8 @@ public partial class LTInterpreter {
 				case "if":
 					string expression = Between(line, "if ", " then")?.Trim() ?? "";
 					if (expression.Length == 0) {
-						LogError(new($"Missing if expression", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new("Missing if expression", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					LTRuntimeContainer containerClone = (LTRuntimeContainer)container.Clone();
 					if (!Exec([expression], fileName + " (if expression)", ref containerClone))
@@ -160,27 +168,28 @@ public partial class LTInterpreter {
 					(var vals, e) = ParseFuncArgs(ln[1..], fileName, line, i+1, ref container);
 					if (e != null && !container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 					if (vals.Count != 1) {
-						LogError(new("Too many returned values, only one can be returned", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new("Too many returned values, only one can be returned", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					container.LastReturnedValue = vals[0];
 					return swStop(ref sw, fileName, ref container, true);
 				case "namespace":
 					if (ln.Length != 2) {
-						LogError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new(ln.Length < 2 ? "Namespace not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					if (container._namespace != "") {
-						LogError(new("Namespace already specified", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(new("Namespace already specified", fileName, line, i+1), ref container, fileName, ref sw))
+							return false;
 					}
 					container._namespace = ln[1];
 					if (DebugMode) Console.WriteLine($"Exec: container namespace is now {container._namespace}");
 					break;
 				case "class":
 					if (ln.Length != 3) {
-						LogError(new(ln.Length < 3 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1), ref container);
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+						if (!ThrowError(
+							new(ln.Length < 3 ? "Class not specified" : $"Too many arguments; passed {ln.Length}, expecting 1", fileName, line, i+1),
+							ref container, fileName, ref sw)) return false;
 					}
 					container.tempValuesForInterpreter.Add("class", ln[1]);
 					break;
@@ -194,12 +203,16 @@ public partial class LTInterpreter {
 						else if (varList == null) throw new Exception("varList should not be null here (please file an issue on the github)");
 						else throwed = new(string.Join("", varList.Select(v => v.Value)), fileName, line, i+1);
 					}
-					LogError(throwed, ref container);
-					if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+					if (!ThrowError(throwed, ref container, fileName, ref sw)) return false;
+					break;
+				case "try":
+					if (container.tryingForError && !ThrowError(new("Cannot use try in a try statement", fileName, line, i+1), ref container, fileName, ref sw, true))
+						return false;
+					container.tryingForError = true;
 					break;
 				default:
-					LogError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container);
-					if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
+					if (!ThrowError(new($"Invalid keyword: {ln[0]}", fileName, line, i+1), ref container, fileName, ref sw))
+						return false;
 					break;
 			}
 		}
@@ -256,6 +269,17 @@ public partial class LTInterpreter {
 		msg += newline ? "\n" : "";
 		container.Output += msg;
 		container.OutputHandler(msg);
+	}
+	public static bool ThrowError(LTError e, ref LTRuntimeContainer container, string fileName, ref Stopwatch? sw, bool forceThrow = false) {
+		if (container.tryingForError && !forceThrow) {
+			container.caughtError = e;
+			if (DebugMode)
+				Console.WriteLine($"Exec: Caught error! {e.File}:{e.Line.Number} | {e.Line.Content} # {e.Message}");
+			return true;
+		}
+		LogError(e, ref container);
+		if (!container.IgnoreErrs || forceThrow) return swStop(ref sw, fileName, ref container);
+		return true;
 	}
 
 	public static LTError? FindAndExecFunc(string id, string[] args, string file, string line, int lineNum, ref LTRuntimeContainer container) {

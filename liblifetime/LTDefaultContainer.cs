@@ -110,5 +110,18 @@ public partial class LTInterpreter {
 		new("lt_ver", "sys", "rt", "str", LTVarAccess.Public, [], false, (c, a) => {
 			return (LTVar.SimpleConst("str", "_ver", LTInfo.Version, "sys", "rt"), null, c);
 		}),
+		// class: !sys->error
+		new("get_message", "sys", "error", "str", LTVarAccess.Public, [], false, (c, a) => {
+			if (c.caughtError == null) return (null, "Function called outside of catch statement", c); 
+			return (LTVar.SimpleConst("str", "_msg", c.caughtError.Message, "sys", "error"), null, c);
+		}),
+		new("get_line_num", "int32", "error", "str", LTVarAccess.Public, [], false, (c, a) => {
+			if (c.caughtError == null) return (null, "Function called outside of catch statement", c); 
+			return (LTVar.SimpleConst("str", "_msg", c.caughtError.Line.Number.ToString(), "sys", "error"), null, c);
+		}),
+		new("get_line_content", "sys", "error", "str", LTVarAccess.Public, [], false, (c, a) => {
+			if (c.caughtError == null) return (null, "Function called outside of catch statement", c); 
+			return (LTVar.SimpleConst("str", "_msg", c.caughtError.Line.Content, "sys", "error"), null, c);
+		}),
 	], []);
 }

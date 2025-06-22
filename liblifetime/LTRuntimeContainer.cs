@@ -13,7 +13,10 @@ public class LTRuntimeContainer : ICloneable {
 	internal LTInterpreterState interpreterState => interpreterStateStack.Count > 0 ? interpreterStateStack[^1] : LTInterpreterState.Idle;
 	internal List<LTInterpreterState> interpreterStateStack = [LTInterpreterState.Idle];
 	internal bool nestedFuncExitedFine = true;
-	public bool IgnoreErrs = false;
+	internal bool tryingForError = false;
+	internal LTError? caughtError = null;
+	internal bool ignoreErrs = false;
+	public bool IgnoreErrs { get => tryingForError || ignoreErrs; set => ignoreErrs = value; }
 	internal Dictionary<string, string> tempValuesForInterpreter = [];
 	internal string _namespace = "";
 	public string Namespace => _namespace;
