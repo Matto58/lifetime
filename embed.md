@@ -150,18 +150,37 @@
     rtContainer.Vars.AddRange([myVar1, myVar2, myVar3]);
     ```
 3. Congrats, it can now be used from Lifetime!
+
 ## Execute Lifetime functions from a runtime container from C#
 ### (Recommended) Method 1: Just use `Exec`
-1. Just use `Exec`:
-    ```cs
-    if (LTInterpreter.Exec(["!my_namespace::my_class->greet \"John\""], "greeting.lt", ref rtContainer)) {
-        Console.WriteLine("yay success!!");
-    }
-    else {
-        Console.WriteLine("epic fail");
-    }
-    ```
-### (Hacky) Method 2: Get and call the function directly
+```cs
+if (LTInterpreter.Exec(["!my_namespace::my_class->greet \"John\""], "greeting.lt", ref rtContainer)) {
+    Console.WriteLine("yay success!!");
+}
+else {
+    Console.WriteLine("epic fail");
+}
+```
+### Method 2: Use `FindAndExecFunc`
+> **NOTE:** This is a function usually just meant for internal function lookup, but it can be used for this.
+```cs
+LTError? e = FindAndExecFunc(
+    "!my_namespace::my_class->greet", // function name
+    "\"John Doe\"".Split(' '), // argument list as a whole string split by spaces
+    "greeting.lt", // file name
+    "!my_namespace::my_class->greet \"John Doe\"", // line contents (now you see why this is internal)
+    1, // line number
+    ref rtContainer // reference to the container
+);
+if (e == null) {
+    Console.WriteLine("yay success!!");
+}
+else {
+    Console.WriteLine("epic fail");
+    // handle the error data appropriately...
+}
+```
+### (Hacky) Method 3: Get and call the function directly
 1. Get it:
     ```cs
     // use IFuncs and LTInternalFunc if internal function or DFuncs and LTDefinedFunc if defined function
@@ -179,6 +198,7 @@
 3. Bop it
 4. Twist it
 5. Pull it
+
 ## Get Lifetime variables from C#
 ```cs
 if (rtContainer.Vars.TryGetValue("my_namespace", "my_class", "my_var", out LTVar myVar)) {
