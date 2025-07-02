@@ -1,5 +1,6 @@
 - [ ] stack trace
-- [ ] step-by-step debugger connectivity thingymajig
+- [x] step-by-step debugger connectivity thingymajig
 - [ ] syntax.md file
 - [ ] docs.md file
 - [x] embed.md file
+- [ ] fix strings like " blah blah" not being parsed correctly
