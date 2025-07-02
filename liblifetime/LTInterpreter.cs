@@ -2,24 +2,43 @@ using System.Diagnostics;
 
 namespace Mattodev.Lifetime;
 
-public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc, ParsingClass }
+public enum LTInterpreterState { Idle, Executing, ExitSuccess, ExitFail, ParsingIf, ParsingFunc, BreakpointHit }
 public partial class LTInterpreter {
 	// yes, this variable is readwritable, even by external programs, this is by design
 	public static bool DebugMode = false;
 
 	public static bool Exec(string[] source, string fileName, ref LTRuntimeContainer container, bool nested = false, bool skipMinification = false) {
+		if (container.interpreterState == LTInterpreterState.BreakpointHit)
+			container.interpreterStateStack.RemoveAt(container.interpreterStateStack.Count-1);
 		container.interpreterStateStack.Add(LTInterpreterState.Executing);
 		if (!nested) container.nestedFuncExitedFine = true;
 		var s = (skipMinification ? source : MinifyCode(source)).Select((l, i) => (l, i)).ToArray();
 		Stopwatch? sw = null;
 		if (DebugMode) sw = Stopwatch.StartNew();
 		foreach ((string line, int i) in s) {
+			if (i < container.continueFromInx-1) continue;
 			string[] ln = line.Split(' ');
 			if (DebugMode) {
 				Console.WriteLine($"Exec: LINE {i+1}: {line}");
 				Console.WriteLine($"Exec: PARSED: {string.Join(',', ln)}");
 				Console.WriteLine($"Exec: STATE: {container.interpreterState}");
+				Console.WriteLine("Exec: Scanning for breakpoints...");
 			}
+
+			// todo: optimize
+			var applicableBpsEnum = container.Breakpoints.Where(b => b.fileName == fileName && b.lineNum == i+1);
+			if (applicableBpsEnum.Any()) {
+				var applicableBps = applicableBpsEnum.ToList();
+				applicableBps.ForEach(a => a.onBreak?.Invoke(line, i+1));
+				for (int j = 0; j < container.Breakpoints.Count; j++)
+					if (container.Breakpoints[j].fileName == fileName && container.Breakpoints[j].lineNum == i+1)
+						container.Breakpoints.RemoveAt(j);
+				container.continueFromInx = i+1;
+				if (DebugMode)
+					Console.WriteLine($"Exec: Found {applicableBps.Count} applicable breakpoint(s).");
+				return swStop(ref sw, fileName, ref container, true, true);
+			}
+			else if (DebugMode) Console.WriteLine("Exec: No applicable breakpoints found.");
 
 			switch (container.interpreterState) {
 				case LTInterpreterState.ParsingFunc:
@@ -473,9 +492,16 @@ public partial class LTInterpreter {
 	}
 	*/
 
-	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false) {
-		c.interpreterStateStack.Add(v ? LTInterpreterState.ExitSuccess : LTInterpreterState.ExitFail);
+	internal static bool swStop(ref Stopwatch? s, string f, ref LTRuntimeContainer c, bool v = false, bool bp = false) {
+		c.interpreterStateStack.Add(
+			bp
+			? LTInterpreterState.BreakpointHit
+			: (v ? LTInterpreterState.ExitSuccess : LTInterpreterState.ExitFail));
 		s?.Stop();
+		if (bp) {
+			if (DebugMode) Console.WriteLine($"swStop: hit breakpoint in {s?.ElapsedMilliseconds}ms in file {f}");
+			return v;
+		}
 		c.Handles.ForEach(h => h?.Close());
 		if (DebugMode) {
 			Console.WriteLine($"swStop: exited {f} in {s?.ElapsedMilliseconds}ms, now listing dfuncs:");
@@ -501,5 +527,12 @@ public partial class LTInterpreter {
 			Console.WriteLine("swStop: binded namespaces: " + string.Join(", ", c.bindedNamespaces));
 		}
 		return v;
+	}
+
+	public class Breakpoint(string fileName, int lineNum, Action<string, int>? onBreak) {
+		// string line, int lineNum
+		public Action<string, int>? onBreak = onBreak;
+		public int lineNum = lineNum;
+		public string fileName = fileName;
 	}
 }

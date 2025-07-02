@@ -34,6 +34,7 @@ class Program {
 			Console.Write(msg);
 			Console.ForegroundColor = old;
 		};
+		Console.WriteLine("Ready.");
 
 		foreach (string arg in args) {
 			Console.ForegroundColor = ConsoleColor.Gray;
@@ -69,7 +70,7 @@ class Program {
 				Console.WriteLine(
 					"? show help\n" +
 					"q quit debugger\n" +
-					"b <to be implemented> [line] set breakpoint\n" +
+					"b [line] set breakpoint\n" +
 					"r run file/continue execution\n" +
 					"s <to be implemented> step on the next line\n" +
 					"o [filename] open file\n" +
@@ -82,6 +83,7 @@ class Program {
 					Console.Write("ARE YOU SURE? Debugging is still in progress. [y/N]");
 					var conf = Console.ReadKey();
 					Console.ForegroundColor = ConsoleColor.White;
+					Console.WriteLine();
 					if (conf.Key != ConsoleKey.Y) break;
 				}
 				debugActive = false;
@@ -107,12 +109,20 @@ class Program {
 				break;
 			}
 			case "r": {
+				if (filename == "") {
+					Console.WriteLine("No file loaded.");
+					break;
+				}
 				debugActive = true;
 				Console.ForegroundColor = ConsoleColor.DarkGray;
 				bool result = LTInterpreter.Exec(src, filename, ref rtContainer, skipMinification: true);
-				debugActive = false;
 				Console.ForegroundColor = ConsoleColor.DarkCyan;
-				Console.WriteLine(result ? "Execution successful." : "Execution failed!");
+				if (rtContainer.GetInterpreterState() == LTInterpreterState.BreakpointHit)
+					Console.WriteLine("Breakpoint hit.");
+				else {
+					debugActive = false;
+					Console.WriteLine(result ? "Execution successful." : "Execution failed!");
+				}
 				break;
 			}
 			case "l": {
@@ -120,6 +130,16 @@ class Program {
 					Console.WriteLine("No file loaded.");
 				else
 					Console.WriteLine(string.Join('\n', src.Select((s, i) => $"{i+1}:\t{s}"))); // this is terrifying
+				break;
+			}
+			case "b": {
+				if (filename == "") {
+					Console.WriteLine("No file loaded.");
+					break;
+				}
+				if (!int.TryParse(ln[1], out int n)) Console.WriteLine("Failed to parse line number.");
+				else if (n < 1 || n > src.Length) Console.WriteLine("Line number is out of scope.");
+				else rtContainer.Breakpoints.Add(new(filename, n, null));
 				break;
 			}
 			default: {

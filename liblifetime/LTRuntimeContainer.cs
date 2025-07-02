@@ -18,6 +18,8 @@ public class LTRuntimeContainer : ICloneable {
 	internal bool ignoreErrs = false;
 	public bool IgnoreErrs { get => tryingForError || ignoreErrs; set => ignoreErrs = value; }
 	internal Dictionary<string, string> tempValuesForInterpreter = [];
+	public List<LTInterpreter.Breakpoint> Breakpoints = [];
+	internal int continueFromInx = 0;
 	internal string _namespace = "";
 	public string Namespace => _namespace;
 	public string Class => tempValuesForInterpreter.GetValueOrDefault("class", "");
@@ -50,4 +52,5 @@ public class LTRuntimeContainer : ICloneable {
 		clone.tempValuesForInterpreter = tempValuesForInterpreter.ToDictionary(a => a.Key, a => a.Value);
 		return clone;
 	}
+	public LTInterpreterState GetInterpreterState() => interpreterState;
 }
