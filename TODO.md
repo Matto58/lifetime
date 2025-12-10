@@ -4,3 +4,5 @@
 - [ ] docs.md file
 - [x] embed.md file
 - [ ] fix strings like " blah blah" not being parsed correctly
+- [ ] for loops
+- [ ] fix catching thrown errors ending the interpreter prematurely without swStop??
