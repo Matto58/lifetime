@@ -1,14 +1,16 @@
 namespace Mattodev.Lifetime;
 
+public delegate (LTVar?, string?) LTFuncBase(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams);
+
 public interface ILifetimeFunc : ILifetimeVar {
 	public int AcceptsArgs { get; }
 	public bool IgnoreArgCount { get; set; }
 	public (string type, string name)[] AcceptedArgs { get; init; }
-	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams);
+	public LTFuncBase? Call { get; init; }
 }
 public class LTInternalFunc(
 	string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
-	Func<LTRuntimeContainer, LTVarCollection, (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> executedFunction
+	LTFuncBase? executedFunction
 ) : ILifetimeFunc {
 	public string Name { get; set; } = name;
 	public string Namespace { get; set; } = funcNamespace;
@@ -26,18 +28,11 @@ public class LTInternalFunc(
 	bool ILifetimeVar.IsNull { get => IsNull; set => IsNull = value; }
 	public Action? OnValueGet { get; set; } = null;
 	public Action? OnValueSet { get; set; } = null;
+	public LTFuncBase? Call { get; init; } = executedFunction;
 
-	internal Func<LTRuntimeContainer, LTVarCollection, (LTVar? ReturnedValue, string? Error, LTRuntimeContainer ResultingContainer)> execedFunc
-		= executedFunction;
-
-	public LTInternalFunc(
-		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount
-	) : this(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, (c, _) => (null, null, c)) {}
-
-	public (LTVar?, string?) Call(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams) {
-		var (ret, err, container) = execedFunc((LTRuntimeContainer)runtimeContainer.Clone(), funcParams);
-		runtimeContainer.Output = container.Output;
-		return (ret, err);
+	public (LTVar?, string?) CallSafe(ref LTRuntimeContainer runtimeContainer, LTVarCollection funcParams) {
+		if (Call == null) return (null, "Executed function is internally null");
+		return Call(ref runtimeContainer, funcParams);
 	}
 
 	public object Clone() => MemberwiseClone();
@@ -49,24 +44,22 @@ public class LTDefinedFunc : LTInternalFunc {
 	public LTDefinedFunc(
 		string name, string funcNamespace, string funcClass, string returnType, LTVarAccess access, (string type, string name)[] acceptedArgs, bool ignoreArgCount,
 		string[] functionSrcCode, string fileName
-	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount) {
+	) : base(name, funcNamespace, funcClass, returnType, access, acceptedArgs, ignoreArgCount, null) {
 		SourceCode = functionSrcCode;
-		execedFunc = (container, args) => {
-			LTRuntimeContainer container2 = (LTRuntimeContainer)container.Clone();
-			container2._namespace = funcNamespace;
-			container2.tempValuesForInterpreter["class"] = funcClass;
+		Call = (ref LTRuntimeContainer container, LTVarCollection args) => {
+			container._namespace = funcNamespace;
+			container.tempValuesForInterpreter["class"] = funcClass;
 			for (int i = 0; i < args.Count; i++) {
 				var arg = args[i];
 				if (!ignoreArgCount && arg.Type != acceptedArgs[i].type)
-					return (null, $"Type mismatch for argument {acceptedArgs[i].name} (expecting {acceptedArgs[i].type}, got {arg.Type})", container);
+					return (null, $"Type mismatch for argument {acceptedArgs[i].name} (expecting {acceptedArgs[i].type}, got {arg.Type})");
 				arg.Namespace = funcNamespace;
 				arg.Class = funcClass;
 				arg.Name = ignoreArgCount ? arg.Name : acceptedArgs[i].name;
-				container2.Vars.Add(arg);
+				container.Vars.Add(arg);
 			}
-			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container2, true, true);
-			container.Output = container2.Output;
-			return (container2.LastReturnedValue, null, container);
+			LTInterpreter.Exec(SourceCode, $"{fileName} => !{funcNamespace}->{funcClass}::{name}", ref container, true, true);
+			return (container.LastReturnedValue, null);
 		};
 	}
 }

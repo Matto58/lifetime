@@ -40,6 +40,7 @@ public partial class LTInterpreter {
 			}
 			else if (DebugMode) Console.WriteLine("Exec: No applicable breakpoints found.");
 
+			if (DebugMode) Console.WriteLine("Exec: Checking state " + container.interpreterState.ToString());
 			switch (container.interpreterState) {
 				case LTInterpreterState.ParsingFunc:
 					if (line == "end") {
@@ -110,14 +111,8 @@ public partial class LTInterpreter {
 			switch (ln[0][0]) {
 				case '!':
 					var e = FindAndExecFunc(ln[0][1..], ln.Length > 1 ? ln[1..] : [], fileName, line, i+1, ref container);
-					if (e != null) {
-						// LogError shouldnt run if a function that ran within this one exited with an error and already logged it
-						if (container.nestedFuncExitedFine)
-							LogError(e, ref container);
-						container.interpreterStateStack.Add(LTInterpreterState.ExitFail);
-						container.nestedFuncExitedFine = false;
-						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
-					}
+					if (e != null)
+						return ThrowError(e, ref container, fileName, ref sw);
 					continue;
 			}
 			switch (ln[0]) {
@@ -296,7 +291,8 @@ public partial class LTInterpreter {
 				Console.WriteLine($"Exec: Caught error! {e.File}:{e.Line.Number} | {e.Line.Content} # {e.Message}");
 			return true;
 		}
-		LogError(e, ref container);
+		if (!container.nestedFuncExitedFine) LogError(e, ref container);
+		container.nestedFuncExitedFine = false;
 		if (!container.IgnoreErrs || forceThrow) return swStop(ref sw, fileName, ref container);
 		return true;
 	}
