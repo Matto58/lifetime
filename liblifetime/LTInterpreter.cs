@@ -357,7 +357,7 @@ public partial class LTInterpreter {
 		for (int i = args2.Count; i < func.AcceptsArgs; i++)
 			args2.Add(LTVar.SimpleConst(func.AcceptedArgs[i].type, "_arg" + i, null, container.Namespace, container.Class));
 
-		var (v, e2) = func.CallSafe(ref container, new(args2));
+		var (v, e2) = func.Call(ref container, new(args2));
 		container.LastReturnedValue = v;
 		return e2 != null ? new(e2, file, line, lineNum) : null;
 	}
