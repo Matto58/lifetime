@@ -97,7 +97,7 @@ public class LTVarCollection : IDictionary<string, LTVar>, IList<LTVar> {
 		// shirt indexes to the right
 		foreach ((string name, int _) in nameMap.Where(p => p.Value >= index))
 			nameMap[name]++;
-		nameMap.Add($"${item.Namespace}::{item.Class}->{item.Value}", index);
+		nameMap.Add($"${item.Namespace}::{item.Class}->{item.Name}", index);
 	}
 
 	public bool Remove(string key) => nameMap.Remove(key);

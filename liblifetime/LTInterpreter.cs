@@ -58,7 +58,7 @@ public partial class LTInterpreter {
 							container.tempValuesForInterpreter["fn_name"],
 							container.Namespace,
 							container.Class,
-							container.tempValuesForInterpreter["fn_type"],
+							(LTVarType)int.Parse(container.tempValuesForInterpreter["fn_type"]),
 							LTVarAccess.Public,
 							fnArgs,
 							false,
@@ -136,9 +136,12 @@ public partial class LTInterpreter {
 						if (!ThrowError(new($"Invalid value: {string.Join(' ', ln[3..])}", fileName, line, i+1), ref container, fileName, ref sw))
 							return false;
 					}
+					var (type, e2) = KeywordToVarType(ln[1]);
+					if (e2 != null && !ThrowError(new(e2, fileName, line, i+1), ref container, fileName, ref sw))
+						return false;
 					val[0].Constant = false;
 					val[0].Name = ln[2];
-					val[0].Type = ln[1];
+					val[0].Type = (LTVarType)type;
 					val[0].Namespace = container.Namespace;
 					val[0].Class = container.Class;
 					container.Vars.Add(val[0]);
@@ -149,8 +152,11 @@ public partial class LTInterpreter {
 						if (!ThrowError(new("Missing function type and/or name", fileName, line, i+1), ref container, fileName, ref sw))
 							return false;
 					}
+					var (vartype, emsg) = KeywordToVarType(ln[1]);
+					if (emsg != null && !ThrowError(new(emsg, fileName, line, i+1), ref container, fileName, ref sw))
+						return false;
 					Dictionary<string, string> funcProps = new() {
-						{ "fn_type", ln[1] },
+						{ "fn_type", ((int)vartype).ToString() },
 						{ "fn_name", ln[2] },
 						{ "fn_args", ln.Length > 3 ? string.Join('\x01', ln[3..]) : "" },
 						{ "fn_src", "" },
@@ -172,7 +178,7 @@ public partial class LTInterpreter {
 					if (!Exec([expression], fileName + " (if expression)", ref containerClone))
 						if (!container.IgnoreErrs) return swStop(ref sw, fileName, ref container);
 
-					container.tempValuesForInterpreter["if_exprres"] = containerClone.LastReturnedValue?.Value ?? "false";
+					container.tempValuesForInterpreter["if_exprres"] = (containerClone.LastReturnedValue?.AsBool() ?? false) ? "true" : "false";
 					container.interpreterStateStack.Add(LTInterpreterState.ParsingIf);
 					break;
 				case "ret":
@@ -215,7 +221,7 @@ public partial class LTInterpreter {
 						(var varList, var err) = ParseFuncArgs(ln[1..], fileName, line, i+1, ref container);
 						if (err != null) throwed = err;
 						else if (varList == null) throw new Exception("varList should not be null here (please file an issue on the github)");
-						else throwed = new(string.Join("", varList.Select(v => v.Value)), fileName, line, i+1);
+						else throwed = new(string.Join("", varList.Select(v => v.AsStr())), fileName, line, i+1);
 					}
 					if (!ThrowError(throwed, ref container, fileName, ref sw)) return false;
 					break;
@@ -355,7 +361,7 @@ public partial class LTInterpreter {
 			return new($"Too many args passed; passed {args2.Count}, expecting {func.AcceptsArgs}", file, line, lineNum);
 		// fill nongiven args with null: breaking change!
 		for (int i = args2.Count; i < func.AcceptsArgs; i++)
-			args2.Add(LTVar.SimpleConst(func.AcceptedArgs[i].type, "_arg" + i, null, container.Namespace, container.Class));
+			args2.Add(LTVar.SimpleConst(func.AcceptedArgs[i].type, "_arg" + i, [], container.Namespace, container.Class));
 
 		var (v, e2) = func.Call(ref container, new(args2));
 		container.LastReturnedValue = v;
@@ -377,7 +383,7 @@ public partial class LTInterpreter {
 					terminatedStrProperly = true;
 				}
 				else s = arg.Length > 1 ? arg[1..] : "";
-				parsed.Add(LTVar.SimpleMut("str", "arg" + parsed.Count, s, container.Namespace, container.Class));
+				parsed.Add(LTVar.SimpleMut(LTVarType.str, "arg" + parsed.Count, s, container.Namespace, container.Class));
 				continue;
 			}
 			else if (arg[0] == '$') {
@@ -421,22 +427,22 @@ public partial class LTInterpreter {
 
 			if (doingString)
 				if (arg[^1] == '"') {
-					parsed[^1].Value += " " + arg[..^1];
+					parsed[^1].AssignStr(parsed[^1].AsStr()! + " " + arg[..^1]);
 					doingString = false;
 					terminatedStrProperly = true;
 				}
-				else parsed[^1].Value += " " + arg;
+				else parsed[^1].AssignStr(parsed[^1].AsStr()! + " " + arg);
 			else if (int.TryParse(arg, out int n))
-				parsed.Add(LTVar.SimpleMut("int32", "arg" + parsed.Count, n.ToString(), container.Namespace, container.Class));
+				parsed.Add(LTVar.SimpleMut(LTVarType.i32, "arg" + parsed.Count, n, container.Namespace, container.Class));
 			else if (bool.TryParse(arg, out bool b))
-				parsed.Add(LTVar.SimpleMut("bool", "arg" + parsed.Count, b.ToString(), container.Namespace, container.Class));
+				parsed.Add(LTVar.SimpleMut(LTVarType.boolean, "arg" + parsed.Count, b, container.Namespace, container.Class));
 			else {
 				LogWarning($"Unable to parse {arg} as a str, returning it as an obj", ref container);
-				parsed.Add(LTVar.SimpleMut("obj", "arg" + parsed.Count, arg, container.Namespace, container.Class));
+				parsed.Add(LTVar.SimpleMut(LTVarType.obj, "arg" + parsed.Count, arg, container.Namespace, container.Class));
 			}
 		}
 			
-		if (parsed.Count != 0 && !terminatedStrProperly && parsed[^1].Type == "str") {
+		if (parsed.Count != 0 && !terminatedStrProperly && parsed[^1].Type == LTVarType.str) {
 			return (parsed, new("Unterminated string", file, line, lineNum));
 		}
 		if (DebugMode) Console.WriteLine("ParseFuncArgs: parsed " + parsed.Count + " args");
@@ -444,7 +450,7 @@ public partial class LTInterpreter {
 	}
 
 	// todo: this function relies heavily on linq-based syntactical sugar, no idea if that's a good thing or not
-	public static ((string Type, string Name)[] Args, LTError? Error) ParseFuncDefArgs(string[] args, string file, string line, int lineNum) {
+	public static ((LTVarType Type, string Name)[] Args, LTError? Error) ParseFuncDefArgs(string[] args, string file, string line, int lineNum) {
 		args = args.Where(a => a.Length != 0).ToArray();
 		if (args.Length == 0) return ([], null);
 
@@ -452,7 +458,11 @@ public partial class LTInterpreter {
 		var a2 = a.Where(arg => arg.Length != 2);
 		if (a2.Any())
 			return ([], new($"Missing argument type and/or name from function: {string.Join(':', a2.First())}", file, line, lineNum));
-		return ([..a.Select(a => (a[0], a[1]))], null);
+		// wtf is happening here
+		var a3 = a.Select(a => (KeywordToVarType(a[0]), a[1]));
+		if (a3.Any(p => p.Item1.Item1 == null))
+			return ([], new(a3.First(p => p.Item1.Item1 == null).Item1.Item2, file, line, lineNum));
+		return ([..a3.Select(p => ((LTVarType)p.Item1.Item1, p.Item2))], null);
 	}
 	public static ILifetimeFunc? GetFunc(string funcNs, string funcClass, string funcName, Dictionary<string, LTDefinedFunc> indexedDFuncs, Dictionary<string, LTInternalFunc> indexedIFuncs) {
 		if (DebugMode) Console.WriteLine($"GetFunc: passed {funcNs},{funcClass},{funcName}");
@@ -463,6 +473,13 @@ public partial class LTInterpreter {
 
 		return null;
 	}
+
+	public static (LTVarType?, string?) KeywordToVarType(string v) => v switch {
+		"int32" => (LTVarType.i32, null),
+		"str" => (LTVarType.str, null),
+		"obj" => (LTVarType.obj, null),
+		_ => (null, "Invalid type " + v)
+	};
 
 	// adapted from https://stackoverflow.com/a/17252672
 	// yknow what they say, even the most senior of programmers still actively use stackoverflow
@@ -515,7 +532,7 @@ public partial class LTInterpreter {
 
 			Console.WriteLine("swStop: now vars:");
 			c.Vars
-				.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.Value}"));
+				.ForEach(f => Console.WriteLine($"\t{f.Type}\t${f.Namespace}->{f.Class}::{f.Name}\t= {f.AsStr()}"));
 			
 			Console.WriteLine("swStop: now interpreter state stack:");
 			c.interpreterStateStack
