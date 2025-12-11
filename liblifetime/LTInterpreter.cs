@@ -111,8 +111,8 @@ public partial class LTInterpreter {
 			switch (ln[0][0]) {
 				case '!':
 					var e = FindAndExecFunc(ln[0][1..], ln.Length > 1 ? ln[1..] : [], fileName, line, i+1, ref container);
-					if (e != null)
-						return ThrowError(e, ref container, fileName, ref sw);
+					if (e != null && !ThrowError(e, ref container, fileName, ref sw))
+						return false;
 					continue;
 			}
 			switch (ln[0]) {
@@ -284,11 +284,12 @@ public partial class LTInterpreter {
 		container.Output += msg;
 		container.OutputHandler(msg);
 	}
+	// RETURNS true if the error IS caught, false if it ISN'T
 	public static bool ThrowError(LTError e, ref LTRuntimeContainer container, string fileName, ref Stopwatch? sw, bool forceThrow = false) {
 		if (container.tryingForError && !forceThrow) {
 			container.caughtError = e;
 			if (DebugMode)
-				Console.WriteLine($"Exec: Caught error! {e.File}:{e.Line.Number} | {e.Line.Content} # {e.Message}");
+				Console.WriteLine($"ThrowError: Caught error! {e.File}:{e.Line.Number} | {e.Line.Content} # {e.Message}");
 			return true;
 		}
 		if (!container.nestedFuncExitedFine) LogError(e, ref container);
