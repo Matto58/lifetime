@@ -135,9 +135,9 @@ public partial class LTInterpreter {
 		new("read_as_str", "sys", "fl", LTVarType.str, LTVarAccess.Public, [(LTVarType.i32, "handle")], false,  _.sys_fl_read_as_str),
 		new("enum_dir", "sys", "fl", LTVarType.obj, LTVarAccess.Public, [(LTVarType.str, "path")], false, _.sys_fl_enum_dir),
 		// class: !sys->test
-		new("ret_true", "sys", "test", LTVarType.str, LTVarAccess.Public, [], false, _.sys_test_ret_true),
-		new("ret_false", "sys", "test", LTVarType.str, LTVarAccess.Public, [], false, _.sys_test_ret_false),
-		new("print_line_arr", "sys", "test", LTVarType.str, LTVarAccess.Public, [(LTVarType.obj, "arr")], false, _.sys_test_print_line_arr),
+		new("ret_true", "sys", "test", LTVarType.boolean, LTVarAccess.Public, [], false, _.sys_test_ret_true),
+		new("ret_false", "sys", "test", LTVarType.boolean, LTVarAccess.Public, [], false, _.sys_test_ret_false),
+		new("print_line_arr", "sys", "test", LTVarType.obj, LTVarAccess.Public, [(LTVarType.obj, "arr")], false, _.sys_test_print_line_arr),
 		// class: !sys->rt
 		new("lt_ver", "sys", "rt", LTVarType.str, LTVarAccess.Public, [], false, _.sys_rt_lt_ver),
 		// class: !sys->error
