@@ -27,28 +27,20 @@ public partial class LTInterpreter {
 			return (null, null);
 		}
 
-		// todo: avoid copypaste of open_r, open_w and open_rw
-		internal static (LTVar?, string?) sys_fl_open_r(ref LTRuntimeContainer c, LTVarCollection a) {
+		internal static (LTVar?, string?) Isys_fl_open(ref LTRuntimeContainer c, LTVarCollection a, FileAccess access) {
+			string? name = a[0].AsStr();
+			if (name is null)
+				return (null, "File name is null");
 			if (!File.Exists(a[0].AsStr()))
-				return (null, "File not found: " + a[0].AsStr());
+				return (null, "File not found: " + name);
 
-			c.Handles.Add(File.Open(a[0].AsStr(), FileMode.Open, FileAccess.Read));
+			c.Handles.Add(File.Open(name, FileMode.Open, access));
 			return (LTVar.SimpleConst(LTVarType.i32, "_handleinx", c.Handles.Count-1, "sys", "fl"), null);
 		}
-		internal static (LTVar?, string?) sys_fl_open_w(ref LTRuntimeContainer c, LTVarCollection a) {
-			if (!File.Exists(a[0].AsStr()))
-				return (null, "File not found: " + a[0].AsStr());
 
-			c.Handles.Add(File.Open(a[0].AsStr(), FileMode.Open, FileAccess.Write));
-			return (LTVar.SimpleConst(LTVarType.i32, "_handleinx", c.Handles.Count-1, "sys", "fl"), null);
-		}
-		internal static (LTVar?, string?) sys_fl_open_rw(ref LTRuntimeContainer c, LTVarCollection a) {
-			if (!File.Exists(a[0].AsStr()))
-				return (null, "File not found: " + a[0].AsStr());
-
-			c.Handles.Add(File.Open(a[0].AsStr(), FileMode.Open, FileAccess.ReadWrite));
-			return (LTVar.SimpleConst(LTVarType.i32, "_handleinx", c.Handles.Count-1, "sys", "fl"), null);
-		}
+		internal static (LTVar?, string?) sys_fl_open_r(ref LTRuntimeContainer c, LTVarCollection a) => Isys_fl_open(ref c, a, FileAccess.Read);
+		internal static (LTVar?, string?) sys_fl_open_w(ref LTRuntimeContainer c, LTVarCollection a) => Isys_fl_open(ref c, a, FileAccess.Write);
+		internal static (LTVar?, string?) sys_fl_open_rw(ref LTRuntimeContainer c, LTVarCollection a) => Isys_fl_open(ref c, a, FileAccess.ReadWrite);
 		internal static (LTVar?, string?) sys_fl_close(ref LTRuntimeContainer c, LTVarCollection a) {
 			int handleInx = (int)a[0].AsInt(); // not scary anymore (although maybe cuz it can be null)
 			if (handleInx >= c.Handles.Count)
